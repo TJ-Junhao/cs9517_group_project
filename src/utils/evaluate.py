@@ -2,11 +2,17 @@ import cv2 as cv
 from utils.types import ArrayLike
 import numpy as np
 from textwrap import dedent
+import torch
+from torch import nn
+from torch.utils.data.dataloader import DataLoader
+from torch import device
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 
 
 def evaluate_metrics(
-    predicted: list[np.ndarray],
-    ground_truthes: list[np.ndarray],
+    predicted: np.ndarray,
+    ground_truthes: np.ndarray,
     print_metrics: bool = False,
     custom_title: str = "",
 ) -> dict[str, float]:
@@ -62,3 +68,38 @@ def evaluate_metrics(
         "recall": float(recall),
         "f1": float(f1),
     }
+
+
+@torch.no_grad()
+def evaluate_neural_network(
+    model: nn.Module, loader: DataLoader, device: device, criteria: float
+):
+    assert 0 <= criteria <= 1
+    model.eval()
+    expected_list, predicted_list = [], []
+
+    for x, trues in loader:
+        x = x.to(device)
+        logits = model(x)
+
+        probs = torch.sigmoid(logits)
+        preds = (probs > criteria).int()
+
+        trues = trues.view(-1).cpu().numpy()
+        preds = preds.view(-1).cpu().numpy()
+
+        expected_list.append(trues)
+        predicted_list.append(preds)
+
+    expected_out = np.concatenate(expected_list)
+
+    predicted_out = np.concatenate(predicted_list)
+
+    # Create confusion matrix
+    confusion = confusion_matrix(expected_out, predicted_out, labels=[0, 1])
+    # Calculate accuracy
+    accuracy = accuracy_score(expected_out, predicted_out)
+    # Get classification report
+    report = classification_report(expected_out, predicted_out, output_dict=True)
+
+    return accuracy, confusion, report
