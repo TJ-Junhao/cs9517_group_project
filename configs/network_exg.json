@@ -1,0 +1,30 @@
+{
+    "unet": {
+        "title": "UNet_ExG_feature",
+        "learning_rate": 1e-4,
+        "epoch": 40,
+        "patience": 5,
+        "min_delta": 1e-4,
+        "criteria": 0.6,
+        "features": [
+            {
+                "name": "exg"
+            }
+        ],
+        "batch_size": 3
+    },
+    "resunet": {
+        "title": "ResUnet_ExG_feature",
+        "learning_rate": 1e-4,
+        "epoch": 40,
+        "patience": 5,
+        "min_delta": 1e-4,
+        "criteria": 0.6,
+        "features": [
+            {
+                "name": "exg"
+            }
+            ],
+        "batch_size": 3
+    }
+}

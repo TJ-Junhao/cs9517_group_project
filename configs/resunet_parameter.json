@@ -1,0 +1,12 @@
+{
+    "resunet": {
+        "title": "ResUnet_LearnableRes",
+        "learning_rate": 1e-4,
+        "epoch": 100,
+        "patience": 5,
+        "min_delta": 1e-4,
+        "criteria": 0.6,
+        "features": [],
+        "batch_size": 3
+    }
+}

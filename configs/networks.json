@@ -1,0 +1,32 @@
+{
+    "unet": {
+        "title": "UNet_Baseline",
+        "learning_rate": 1e-4,
+        "epoch": 40,
+        "patience": 5,
+        "min_delta": 1e-4,
+        "criteria": 0.6,
+        "features": [],
+        "batch_size": 3
+    },
+    "resunet": {
+        "title": "ResUnet",
+        "learning_rate": 1e-4,
+        "epoch": 40,
+        "patience": 5,
+        "min_delta": 1e-4,
+        "criteria": 0.6,
+        "features": [],
+        "batch_size": 3
+    },
+    "aspp_resunet": {
+        "title": "ASPPResUnet",
+        "learning_rate": 1e-4,
+        "epoch": 40,
+        "patience": 5,
+        "min_delta": 1e-4,
+        "criteria": 0.6,
+        "features": [],
+        "batch_size": 3
+    }
+}

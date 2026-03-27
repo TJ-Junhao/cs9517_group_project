@@ -14,11 +14,9 @@ venv/
 
 # Data
 datasets/
-data/
 outputs/
 results/
 checkpoints/
-models/
 logs/
 
 # Editor
