@@ -24,6 +24,8 @@ from project.utils.constant import (
     get_checkpoint_path,
     get_plot_path,
     get_performance_path,
+    get_output_path,
+    get_failure_path,
 )
 
 
@@ -49,6 +51,7 @@ def eval_model(
         save_to=plot_save_to,
         title=f"{title} " if title != "" else "" + "Confusion Matrix",
         mode=mode,
+        show=False,
     )
 
     with open(perf_save_to / f"performance_{mode}.json", "w", encoding="utf-8") as f:
@@ -67,6 +70,14 @@ def load_model(model_name: str, run_name: str, channel_in: int = 3) -> nn.Module
     model = model_factory(channel_in).to(DEVICE)
     model.load_state_dict(state_dict)
     return model
+
+
+def save_prediction(pipe: ImagePipeline, save_to: Path):
+    pipe.save(save_to)
+
+
+def failure_analysis(pipe: ImagePipeline, save_to: Path):
+    pipe.select_failures(10).save(save_to, True)
 
 
 def main():
@@ -93,6 +104,8 @@ def main():
     ensure_dirs_exist(run_name)
     plot_path = get_plot_path(run_name)
     performance_path = get_performance_path(run_name)
+    output_path = get_output_path(run_name)
+    failure_path = get_failure_path(run_name)
 
     eval_model(
         model,
@@ -103,6 +116,10 @@ def main():
         criteria=parameters.criteria,
         mode=mode,
     )
+    predicted_pipe = pipe.set_nn_clf(model).nn_predict(parameters.criteria, DEVICE)
+    save_prediction(predicted_pipe, output_path)
+
+    failure_analysis(predicted_pipe, failure_path)
 
 
 if __name__ == "__main__":

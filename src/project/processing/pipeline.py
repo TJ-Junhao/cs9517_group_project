@@ -2,11 +2,13 @@ from __future__ import annotations
 from typing import Self, Callable, Any
 from copy import copy
 from enum import Enum, auto
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2 as cv
 from cv2.typing import MatLike, TermCriteria
+from skimage.util import random_noise
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -44,7 +46,6 @@ class ImagePipeline:
     ) -> None:
         assert len(images) == len(gt)
         self.images = np.array([cv.resize(image, resize) for image in images])
-        # const
         if any(g.shape[:2] != resize[::-1] for g in gt) or isinstance(gt, list):
             self.gt = np.array([cv.resize(true, resize) for true in gt])
         else:
@@ -134,6 +135,18 @@ class ImagePipeline:
             num_workers=0,
         )
 
+    def save(self: Self, save_to: Path, save_gt: bool = False):
+        save_to.mkdir(parents=True, exist_ok=True)
+
+        for i, (im, t) in enumerate(zip(self.images, self.gt)):
+            cv.imwrite(str(save_to / f"predicted_{i}.png"), im)
+
+            if save_gt:
+                gt = np.asarray(t)
+                if gt.dtype != np.uint8:
+                    gt = (gt > 0).astype(np.uint8) * 255
+                cv.imwrite(str(save_to / f"ground_truth_{i}.png"), gt)
+
     def set_nn_clf(self: Self, clf: nn.Module) -> Self:
         self.nn_clf = clf
         return self
@@ -150,19 +163,44 @@ class ImagePipeline:
             X_np = X_np[..., None]
 
         X = torch.tensor(X_np, dtype=torch.float32).permute((0, 3, 1, 2))
+
         with torch.no_grad():
             for x in X:
                 x = x.unsqueeze(0).to(device)
                 logits = self.nn_clf(x)
-
                 probs = torch.sigmoid(logits)
-                preds = (probs > criteria).int()
 
-                preds = cv.bitwise_not(
-                    preds.squeeze(0).permute(1, 2, 0).cpu().numpy(), None, None
-                )
+                preds = (probs <= criteria).to(torch.uint8) * 255
+                preds = preds.squeeze().cpu().numpy()
+
                 ims.append(preds)
+
         return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+
+    def select_failures(self: Self, bottom_n: int) -> Self:
+        assert self.image_state == ImageState.BINARY
+        scores = []
+        for i, (gt, pred) in enumerate(zip(self.gt, self.images)):
+            scores.append((i, self.per_image_iou(gt, pred), pred, gt))
+
+        worst = sorted(scores, key=lambda x: x[1])[:bottom_n]
+        return self.__class__(
+            np.array([w[2] for w in worst]),
+            np.array([w[3] for w in worst]),
+            ImageState.BINARY,
+            self.title,
+        )
+
+    @staticmethod
+    def per_image_iou(gt: np.ndarray, pred: np.ndarray) -> float:
+
+        gt_bin = gt > 0
+        pred_bin = pred > 0
+        union = np.logical_or(gt_bin, pred_bin).sum()
+        if union == 0:
+            return 1.0
+        inter = np.logical_and(gt_bin, pred_bin).sum()
+        return inter / union
 
     def concat(self: Self, other: np.ndarray | ImagePipeline) -> Self:
         ims = []
@@ -351,3 +389,124 @@ class ImagePipeline:
             return cv.cvtColor(rgb, cv.COLOR_RGB2HSV)
 
         raise ValueError(f"Unsupported conversion: {self.image_state} -> {color}")
+
+    def gaussian_noise(self: Self, var: float = 0.01) -> Self:
+        ims = np.array(
+            [
+                (random_noise(im / 255.0, mode="gaussian", var=var) * 255)
+                for im in self.images
+            ]
+        ).astype(np.uint8)
+
+        return self.__class__(
+            ims, self.gt, copy(self.image_state), self.title, self.nn_clf
+        )
+
+    @staticmethod
+    def _get_dst_pts(distortion_intensity: float, shape: tuple[int, int]):
+        h, w = shape
+        dst_pts = np.array(
+            [
+                [
+                    np.random.uniform(0, w * distortion_intensity),
+                    np.random.uniform(0, h * distortion_intensity),
+                ],
+                [
+                    w - np.random.uniform(0, w * distortion_intensity),
+                    np.random.uniform(0, h * distortion_intensity),
+                ],
+                [
+                    w - np.random.uniform(0, w * distortion_intensity),
+                    h - np.random.uniform(0, h * distortion_intensity),
+                ],
+                [
+                    np.random.uniform(0, w * distortion_intensity),
+                    h - np.random.uniform(0, h * distortion_intensity),
+                ],
+            ]
+        )
+        return dst_pts
+
+    def warp_perspective(self: Self, distortion_intensity: float) -> Self:
+        ims = []
+        gts = []
+
+        for im, t in zip(self.images, self.gt):
+            h, w = im.shape[:2]
+
+            src_pts = np.array(
+                [
+                    [0, 0],
+                    [w - 1, 0],
+                    [w - 1, h - 1],
+                    [0, h - 1],
+                ],
+                dtype=np.float32,
+            )
+
+            dst_pts = self._get_dst_pts(distortion_intensity, (h, w)).astype(np.float32)
+
+            M = cv.getPerspectiveTransform(src_pts, dst_pts)
+
+            ims.append(
+                cv.warpPerspective(
+                    im,
+                    M,
+                    (w, h),
+                    flags=cv.INTER_LINEAR,
+                    borderMode=cv.BORDER_REFLECT_101,
+                )
+            )
+            gts.append(
+                cv.warpPerspective(
+                    t,
+                    M,
+                    (w, h),
+                    flags=cv.INTER_NEAREST,
+                    borderMode=cv.BORDER_CONSTANT,
+                    borderValue=0,
+                )
+            )
+
+        return self.__class__(
+            np.array(ims),
+            np.array(gts),
+            copy(self.image_state),
+            self.title,
+            self.nn_clf,
+        )
+
+    def warp_affine(self: Self, angle: float, scale: float) -> Self:
+        ims = []
+        gts = []
+
+        for im, t in zip(self.images, self.gt):
+            h, w = im.shape[:2]
+
+            M = cv.getRotationMatrix2D((w // 2, h // 2), angle, scale)
+            ims.append(
+                cv.warpAffine(
+                    im,
+                    M,
+                    (w, h),
+                    flags=cv.INTER_LINEAR,
+                    borderMode=cv.BORDER_REFLECT_101,
+                )
+            )
+            gts.append(
+                cv.warpAffine(
+                    t,
+                    M,
+                    (w, h),
+                    flags=cv.INTER_NEAREST,
+                    borderMode=cv.BORDER_REFLECT_101,
+                )
+            )
+
+        return self.__class__(
+            np.array(ims),
+            np.array(gts),
+            copy(self.image_state),
+            self.title,
+            self.nn_clf,
+        )

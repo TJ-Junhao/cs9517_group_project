@@ -165,6 +165,7 @@ def main() -> None:
         save=True,
         save_to=plot_path,
         title=parameters.title,
+        show=False,
     )
 
     save_model(model, checkpoint_path / "model.pt")

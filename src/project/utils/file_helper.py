@@ -3,6 +3,8 @@ from project.utils.constant import (
     get_log_path,
     get_performance_path,
     get_plot_path,
+    get_output_path,
+    get_failure_path,
 )
 
 
@@ -12,6 +14,8 @@ def ensure_dirs_exist(run_name: str) -> None:
         get_log_path(run_name),
         get_plot_path(run_name),
         get_performance_path(run_name),
+        get_output_path(run_name),
+        get_failure_path(run_name),
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)

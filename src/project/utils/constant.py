@@ -60,3 +60,11 @@ def get_performance_path(title: str) -> Path:
 
 def get_log_path(title: str) -> Path:
     return get_run_path(title) / "logs"
+
+
+def get_output_path(title: str) -> Path:
+    return get_run_path(title) / "outputs"
+
+
+def get_failure_path(title: str) -> Path:
+    return get_run_path(title) / "failures"

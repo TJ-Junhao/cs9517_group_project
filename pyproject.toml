@@ -12,6 +12,7 @@ dependencies = [
     "seaborn",
     "scikit-learn",
     "tabulate>=0.10.0",
+    "scikit-image",
 ]
 
 [build-system]

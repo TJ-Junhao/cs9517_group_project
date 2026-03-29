@@ -7,7 +7,7 @@ class DiceLoss(nn.Module):
         super(DiceLoss, self).__init__()
         self.smooth = smooth
 
-    def forward(self, logits, targets):
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         # Apply sigmoid to convert logits to probabilities
         probs = torch.sigmoid(logits)
 

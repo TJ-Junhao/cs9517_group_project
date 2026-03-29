@@ -11,6 +11,7 @@ def plot_loss_curve(
     save_to: Path | None = None,
     title: str = "undefined",
     dpi: int = 600,
+    show: bool = True,
 ) -> None:
     with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
         _, ax = plt.subplots(1, 1, figsize=(16, 7), constrained_layout=True, dpi=dpi)
@@ -47,7 +48,8 @@ def plot_loss_curve(
                 save_to / "training_and_validation_loss_curves",
                 dpi=dpi,
             )
-        plt.show()
+        if show:
+            plt.show()
 
 
 def plot_train_process(
@@ -56,6 +58,7 @@ def plot_train_process(
     save: bool,
     save_to: Path,
     title: str = "",
+    show: bool = True,
 ) -> None:
     train_data = pd.DataFrame(
         {
@@ -64,7 +67,7 @@ def plot_train_process(
             "Validation Loss": val_log,
         }
     )
-    plot_loss_curve(train_data, save=save, save_to=save_to, title=title)
+    plot_loss_curve(train_data, save=save, save_to=save_to, title=title, show=show)
 
 
 def plot_confusion_matrix(
@@ -74,6 +77,7 @@ def plot_confusion_matrix(
     title: str = "undefined",
     mode: str = "test",
     dpi: int = 600,
+    show: bool = True,
 ):
     with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
         _, ax = plt.subplots(1, 1, figsize=(9, 5), constrained_layout=True, dpi=dpi)
@@ -113,4 +117,5 @@ def plot_confusion_matrix(
                 save_to / f"confusion_matrix_{mode}",
                 dpi=dpi,
             )
-        plt.show()
+        if show:
+            plt.show()
