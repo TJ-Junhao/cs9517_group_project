@@ -9,12 +9,12 @@ def plot_loss_curve(
     data_frame: pd.DataFrame,
     save: bool = False,
     save_to: Path | None = None,
-    title: str = "undefined",
+    run: str = "undefined",
     dpi: int = 600,
     show: bool = True,
 ) -> None:
     with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
-        _, ax = plt.subplots(1, 1, figsize=(16, 7), constrained_layout=True, dpi=dpi)
+        fig, ax = plt.subplots(1, 1, figsize=(16, 7), constrained_layout=True, dpi=dpi)
         palette = ["#e71c22", "#0d61e8"]
 
         df_melt = pd.melt(data_frame, ["Epoch"])
@@ -40,16 +40,17 @@ def plot_loss_curve(
         ax.set_xlabel("Epoch", fontsize=12, fontweight="bold")
         ax.set_ylabel("Loss", fontsize=12, fontweight="bold")
         ax.margins(x=0, y=0)
-        plt.suptitle(title, fontsize=24, fontweight="bold")
+        plt.suptitle(run, fontsize=24, fontweight="bold")
         if save:
             assert save_to is not None
             save_to.mkdir(parents=True, exist_ok=True)
-            plt.savefig(
+            fig.savefig(
                 save_to / "training_and_validation_loss_curves",
                 dpi=dpi,
             )
         if show:
             plt.show()
+        plt.close(fig)
 
 
 def plot_train_process(
@@ -57,7 +58,7 @@ def plot_train_process(
     val_log: list,
     save: bool,
     save_to: Path,
-    title: str = "",
+    run: str = "",
     show: bool = True,
 ) -> None:
     train_data = pd.DataFrame(
@@ -67,20 +68,20 @@ def plot_train_process(
             "Validation Loss": val_log,
         }
     )
-    plot_loss_curve(train_data, save=save, save_to=save_to, title=title, show=show)
+    plot_loss_curve(train_data, save=save, save_to=save_to, run=run, show=show)
 
 
 def plot_confusion_matrix(
     confusion_matrix: np.ndarray,
     save: bool = False,
     save_to: Path | None = None,
-    title: str = "undefined",
+    run: str = "undefined",
     mode: str = "test",
     dpi: int = 600,
     show: bool = True,
 ):
     with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
-        _, ax = plt.subplots(1, 1, figsize=(9, 5), constrained_layout=True, dpi=dpi)
+        fig, ax = plt.subplots(1, 1, figsize=(9, 5), constrained_layout=True, dpi=dpi)
 
         x_labels = ["Soil", "Plant"]
         y_labels = ["Soil", "Plant"]
@@ -100,7 +101,7 @@ def plot_confusion_matrix(
         cbar1 = ax0.collections[0].colorbar
         cbar1.ax.set_ylabel("Number of Samples", rotation=270, labelpad=15, va="bottom")  # type: ignore
 
-        ax.set_title(title, fontsize=15, fontweight="bold")
+        ax.set_title(run, fontsize=15, fontweight="bold")
 
         ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
         ax.tick_params(axis="x", labelsize=9, width=0.5)
@@ -113,9 +114,10 @@ def plot_confusion_matrix(
         if save:
             assert save_to is not None
             save_to.mkdir(exist_ok=True)
-            plt.savefig(
+            fig.savefig(
                 save_to / f"confusion_matrix_{mode}",
                 dpi=dpi,
             )
         if show:
             plt.show()
+        plt.close(fig)

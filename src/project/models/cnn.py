@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 import torch.nn as nn
 
@@ -172,65 +174,6 @@ class ResUNet(nn.Module):
 
 
 class ASPPResUNet(nn.Module):
-    class ResidualEncoderBlock(nn.Module):
-        def __init__(self, channel_in: int, channel_out: int, stride: int = 1) -> None:
-            super().__init__()
-            self.conv1 = nn.Conv2d(
-                channel_in,
-                channel_out,
-                kernel_size=3,
-                stride=stride,
-                padding=1,
-                bias=False,
-            )
-            self.conv2 = nn.Conv2d(
-                channel_out, channel_out, kernel_size=3, stride=1, padding=1, bias=False
-            )
-
-            self.gn1 = nn.GroupNorm(num_groups=8, num_channels=channel_out)
-            self.gn2 = nn.GroupNorm(num_groups=8, num_channels=channel_out)
-            self.activation = nn.ReLU(inplace=True)
-
-            self.proj = (
-                nn.Identity()
-                if channel_in == channel_out and stride == 1
-                else nn.Conv2d(channel_in, channel_out, kernel_size=1, stride=stride)
-            )
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            identity = self.proj(x)
-            out = self.activation(self.gn1(self.conv1(x)))
-            out = self.gn2(self.conv2(out))
-            return self.activation(out + identity)
-
-    class ResidualDecoderBlock(nn.Module):
-        def __init__(self, channel_in, channel_out) -> None:
-            super().__init__()
-            self.conv1 = nn.Conv2d(
-                channel_in, channel_out, kernel_size=3, stride=1, padding=1, bias=False
-            )
-            self.conv2 = nn.Conv2d(
-                channel_out, channel_out, kernel_size=3, stride=1, padding=1, bias=False
-            )
-            self.proj = (
-                nn.Identity()
-                if channel_in == channel_out
-                else nn.Conv2d(channel_in, channel_out, kernel_size=1)
-            )
-            self.up_conv = nn.ConvTranspose2d(
-                channel_in, channel_out, kernel_size=2, stride=2
-            )
-            self.gn1 = nn.GroupNorm(num_groups=8, num_channels=channel_out)
-            self.gn2 = nn.GroupNorm(num_groups=8, num_channels=channel_out)
-            self.activation = nn.ReLU(inplace=True)
-
-        def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
-            x = torch.cat((self.up_conv(x1), x2), dim=1)
-            identity = self.proj(x)
-            out = self.activation(self.gn1(self.conv1(x)))
-            out = self.gn2(self.conv2(out))
-            return self.activation(out + identity)
-
     class ASPPBlock(nn.Module):
         def __init__(self, channel_in: int, channel_out: int, stride: int = 1) -> None:
             super().__init__()
@@ -300,16 +243,95 @@ class ASPPResUNet(nn.Module):
 
     def __init__(self, channel_in: int) -> None:
         super().__init__()
-        self.enc1 = self.ResidualEncoderBlock(channel_in, 64, stride=1)
-        self.enc2 = self.ResidualEncoderBlock(64, 128, stride=2)
-        self.enc3 = self.ResidualEncoderBlock(128, 256, stride=2)
-        self.enc4 = self.ResidualEncoderBlock(256, 512, stride=2)
+        self.enc1 = ResUNet.ResidualEncoderBlock(channel_in, 64, stride=1)
+        self.enc2 = ResUNet.ResidualEncoderBlock(64, 128, stride=2)
+        self.enc3 = ResUNet.ResidualEncoderBlock(128, 256, stride=2)
+        self.enc4 = self.ASPPBlock(256, 512, stride=2)
         self.bottleneck = self.ASPPBlock(512, 1024, stride=2)
 
-        self.dec1 = self.ResidualDecoderBlock(1024, 512)
-        self.dec2 = self.ResidualDecoderBlock(512, 256)
-        self.dec3 = self.ResidualDecoderBlock(256, 128)
-        self.dec4 = self.ResidualDecoderBlock(128, 64)
+        self.dec1 = ResUNet.ResidualDecoderBlock(1024, 512)
+        self.dec2 = ResUNet.ResidualDecoderBlock(512, 256)
+        self.dec3 = ResUNet.ResidualDecoderBlock(256, 128)
+        self.dec4 = ResUNet.ResidualDecoderBlock(128, 64)
+
+        self.out = nn.Conv2d(64, 1, kernel_size=(1, 1), stride=1, padding=0)
+
+    def forward(self, x: torch.Tensor):
+        x1 = self.enc1(x)
+        x2 = self.enc2(x1)
+        x3 = self.enc3(x2)
+        x4 = self.enc4(x3)
+        x5 = self.bottleneck(x4)
+
+        x6 = self.dec1(x5, x4)
+        x7 = self.dec2(x6, x3)
+        x8 = self.dec3(x7, x2)
+        x9 = self.dec4(x8, x1)
+
+        return self.out(x9)
+
+
+class AttentionGateASPPResUNet(nn.Module):
+    class AttentionGate(nn.Module):
+        def __init__(self, channel) -> None:
+            super().__init__()
+            intermediate_channel = channel // 2
+            self.W_upsample = nn.Conv2d(channel, intermediate_channel, kernel_size=1)
+            self.W_shortcut = nn.Conv2d(channel, intermediate_channel, kernel_size=1)
+            self.attention_map = nn.Conv2d(intermediate_channel, 1, kernel_size=1)
+            self.relu = nn.ReLU(inplace=True)
+            self.sigmoid = nn.Sigmoid()
+
+        def forward(self, shortcut, upsample):
+            att = self.relu(self.W_shortcut(shortcut) + self.W_upsample(upsample))
+            # Map the attention to 0-1
+            att = self.sigmoid(self.attention_map(att))
+            return shortcut * att
+
+    class AttentionGateResDecoderBlock(nn.Module):
+        def __init__(self, channel_in, channel_out) -> None:
+            super().__init__()
+            self.attention = AttentionGateASPPResUNet.AttentionGate(channel_out)
+            self.conv1 = nn.Conv2d(
+                channel_in, channel_out, kernel_size=3, stride=1, padding=1, bias=False
+            )
+            self.conv2 = nn.Conv2d(
+                channel_out, channel_out, kernel_size=3, stride=1, padding=1, bias=False
+            )
+            self.proj = (
+                nn.Identity()
+                if channel_in == channel_out
+                else nn.Conv2d(channel_in, channel_out, kernel_size=1)
+            )
+            self.up_conv = nn.ConvTranspose2d(
+                channel_in, channel_out, kernel_size=2, stride=2
+            )
+            self.gn1 = nn.GroupNorm(num_groups=8, num_channels=channel_out)
+            self.gn2 = nn.GroupNorm(num_groups=8, num_channels=channel_out)
+            self.activation = nn.ReLU(inplace=True)
+
+        def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+            # x1: decoder branch, x2: shortcut branch
+            up = self.up_conv(x1)
+            x2 = self.attention(x2, up)
+            x = torch.cat((up, x2), dim=1)
+            identity = self.proj(x)
+            out = self.activation(self.gn1(self.conv1(x)))
+            out = self.gn2(self.conv2(out))
+            return self.activation(out + identity)
+
+    def __init__(self, channel_in: int) -> None:
+        super().__init__()
+        self.enc1 = ResUNet.ResidualEncoderBlock(channel_in, 64, stride=1)
+        self.enc2 = ResUNet.ResidualEncoderBlock(64, 128, stride=2)
+        self.enc3 = ResUNet.ResidualEncoderBlock(128, 256, stride=2)
+        self.enc4 = ASPPResUNet.ASPPBlock(256, 512, stride=2)
+        self.bottleneck = ASPPResUNet.ASPPBlock(512, 1024, stride=2)
+
+        self.dec1 = self.AttentionGateResDecoderBlock(1024, 512)
+        self.dec2 = self.AttentionGateResDecoderBlock(512, 256)
+        self.dec3 = self.AttentionGateResDecoderBlock(256, 128)
+        self.dec4 = self.AttentionGateResDecoderBlock(128, 64)
 
         self.out = nn.Conv2d(64, 1, kernel_size=(1, 1), stride=1, padding=0)
 

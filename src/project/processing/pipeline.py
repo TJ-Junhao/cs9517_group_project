@@ -322,6 +322,33 @@ class ImagePipeline:
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
+    def brightness_shift(self: Self, beta: float) -> Self:
+        ims = [
+            np.clip(im.astype(np.int16) + beta, 0, 255).astype(np.uint8)
+            for im in self.images
+        ]
+        return self.__class__(
+            ims, self.gt, copy(self.image_state), self.title, self.nn_clf
+        )
+
+    def contrast_shift(self: Self, alpha: float) -> Self:
+        ims = [
+            np.clip(im.astype(np.float32) * alpha, 0, 255).astype(np.uint8)
+            for im in self.images
+        ]
+        return self.__class__(
+            ims, self.gt, copy(self.image_state), self.title, self.nn_clf
+        )
+
+    def jpeg_compression(self: Self, quality: int) -> Self:
+        ims = []
+        for im in self.images:
+            _, encoded = cv.imencode(".jpg", im, [cv.IMWRITE_JPEG_QUALITY, quality])
+            ims.append(cv.imdecode(encoded, cv.IMREAD_COLOR))
+        return self.__class__(
+            ims, self.gt, copy(self.image_state), self.title, self.nn_clf
+        )
+
     def excessive_green_mask(self: Self, threshold: int) -> Self:
         assert self.image_state == ImageState.RGB
         ims = []

@@ -1,6 +1,6 @@
 {
-    "unet": {
-        "title": "UNet_ExG_feature",
+    "UNet_ExG_feature": {
+        "title": "unet",
         "learning_rate": 1e-4,
         "epoch": 40,
         "patience": 5,
@@ -13,8 +13,8 @@
         ],
         "batch_size": 3
     },
-    "resunet": {
-        "title": "ResUnet_ExG_feature",
+    "ResUnet_ExG_feature": {
+        "model": "resunet",
         "learning_rate": 1e-4,
         "epoch": 40,
         "patience": 5,

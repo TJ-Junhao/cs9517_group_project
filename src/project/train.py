@@ -103,11 +103,9 @@ def apply_features(pipe: ImagePipeline, feature_configs: list[dict]) -> ImagePip
     for feature in feature_configs:
         name = feature["name"]
         params = feature.get("params", {})
-
         builder = FEATURE_BUILDERS.get(name)
         if builder is None:
             raise ValueError(f"Unknown feature: {name}")
-
         result = result.concat(builder(pipe, **params))
 
     return result
@@ -128,13 +126,13 @@ def process_pipeline(
 
 def main() -> None:
     parameters = train_arg_parse(sys.argv[0])
-    run_name = parameters.title
+    run_name = parameters.run
 
-    plot_path = get_plot_path(run_name)
+    plot_path = get_plot_path(run_name, None, None)
     checkpoint_path = get_checkpoint_path(run_name)
     ensure_dirs_exist(run_name)
 
-    setup_logger(parameters.title)
+    setup_logger(parameters.run)
     set_seed(SEED)
     pipe_train, pipe_val, pipe_test = load_data(TRAIN_PATH, VAL_PATH, TEST_PATH)
 
@@ -164,7 +162,7 @@ def main() -> None:
         val_log,
         save=True,
         save_to=plot_path,
-        title=parameters.title,
+        run=parameters.run,
         show=False,
     )
 
