@@ -178,30 +178,19 @@ class ImagePipeline:
         return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
     @staticmethod
-    def select_failures_from_arrays(
+    def from_arrays(
         images: np.ndarray,
         gt: np.ndarray,
         predicted: np.ndarray,
-        bottom_n: int,
         title: str = "",
     ) -> ImagePipeline:
-
         N = len(images)
         H, W = gt.shape[1], gt.shape[2]
-
         pred_maps = predicted.reshape(N, H, W).astype(np.uint8) * 255
-        gt_maps = gt.reshape(N, H, W)
-
-        scores = []
-        for i in range(N):
-            iou = ImagePipeline.per_image_iou(gt_maps[i], pred_maps[i])
-            scores.append((i, iou))
-
-        worst_indices = [s[0] for s in sorted(scores, key=lambda x: x[1])[:bottom_n]]
 
         return ImagePipeline(
-            np.array([pred_maps[i] for i in worst_indices]),
-            np.array([gt_maps[i] for i in worst_indices]),
+            pred_maps,
+            gt,
             ImageState.BINARY,
             title,
         )
