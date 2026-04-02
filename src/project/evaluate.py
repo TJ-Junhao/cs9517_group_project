@@ -11,7 +11,7 @@ from torch import nn
 from project.config.configuring import eval_arg_parse, count_channels
 from project.visualization.plot import plot_confusion_matrix
 from project.processing.pipeline import ImagePipeline
-from project.evaluation.metrics import evaluate_neural_network
+from project.evaluation.metrics import predict, compute_metrics
 from project.data.imageio import load_data
 from project.utils.registry import MODELS, CORRUPTIONS
 from project.utils.file_helper import ensure_dirs_exist
@@ -32,36 +32,6 @@ from project.utils.constant import (
 Mode = Literal["test"] | Literal["train"] | Literal["validation"]
 
 
-def eval_model(
-    model: nn.Module,
-    pipe_test: ImagePipeline,
-    save: bool,
-    plot_save_to: Path,
-    perf_save_to: Path,
-    criteria: float = 0.6,
-    run: str = "",
-    mode: str = "test",
-) -> None:
-    test_data = pipe_test.get_data_loader(batch_size=1, shuffle=False, seed=SEED)
-    confusion, report = evaluate_neural_network(
-        model, test_data, device=DEVICE, criteria=criteria
-    )
-
-    plot_confusion_matrix(
-        confusion,
-        dpi=300,
-        save=save,
-        save_to=plot_save_to,
-        run=f"{run} " if run != "" else "" + "Confusion Matrix",
-        mode=mode,
-        show=False,
-    )
-
-    with open(perf_save_to / f"performance_{mode}.json", "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
-    pipe_test.set_nn_clf(model).nn_predict(criteria=criteria, device=DEVICE)
-
-
 def load_model(model_name: str, run_name: str, channel_in: int = 3) -> nn.Module:
     state_dict = torch.load(
         get_checkpoint_path(run_name) / "model.pt",
@@ -75,12 +45,9 @@ def load_model(model_name: str, run_name: str, channel_in: int = 3) -> nn.Module
     return model
 
 
-def save_prediction(pipe: ImagePipeline, save_to: Path):
-    pipe.save(save_to)
-
-
-def failure_analysis(pipe: ImagePipeline, save_to: Path):
-    pipe.select_failures(10).save(save_to, True)
+def save_performance_json(perf_path: Path, mode: str, report: dict):
+    with open(perf_path / f"performance_{mode}.json", "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2)
 
 
 def robustness_test(
@@ -89,24 +56,36 @@ def robustness_test(
     run_name: str,
     mode: str,
     criteria: float,
+    save: bool = True,
 ) -> None:
     for type_corruption, params in CORRUPTIONS.items():
         for i, p in enumerate(params, 1):
+            plot_path = get_plot_path(run_name, type_corruption, i)
+            perf_path = get_performance_path(run_name, type_corruption, i)
+            fail_path = get_failure_path(run_name, mode, type_corruption, i)
+
             corrupted: ImagePipeline = getattr(pipeline, type_corruption)(**p)
-            eval_model(
-                model,
-                corrupted,
-                save=True,
-                plot_save_to=get_plot_path(run_name, type_corruption, i),
-                perf_save_to=get_performance_path(run_name, type_corruption, i),
-                criteria=criteria,
-                run=run_name,
+            loader = corrupted.get_data_loader(batch_size=16, shuffle=False, seed=SEED)
+            expected, predicted = predict(model, loader, DEVICE, criteria)
+            confusion, report = compute_metrics(expected, predicted)
+
+            ImagePipeline.from_arrays(
+                corrupted.images,
+                corrupted.gt,
+                predicted,
+            ).select_failures(10).save(fail_path, True)
+
+            plot_confusion_matrix(
+                confusion,
+                dpi=300,
+                save=save,
+                save_to=plot_path,
+                run=(f"{run_name} " if run_name != "" else "") + "Confusion Matrix",
                 mode=mode,
+                show=False,
             )
-            predicted_pipe = corrupted.set_nn_clf(model).nn_predict(criteria, DEVICE)
-            failure_analysis(
-                predicted_pipe, get_failure_path(run_name, mode, type_corruption, i)
-            )
+
+            save_performance_json(perf_path, mode, report)
 
 
 def normal_evaluation(
@@ -115,24 +94,35 @@ def normal_evaluation(
     run_name: str,
     mode: str,
     criteria: float,
+    save: bool = True,
 ):
     plot_path = get_plot_path(run_name, None, None)
-    performance_path = get_performance_path(run_name, None, None)
+    perf_path = get_performance_path(run_name, None, None)
     output_path = get_output_path(run_name, mode, None, None)
-    failure_path = get_failure_path(run_name, mode, None, None)
+    fail_path = get_failure_path(run_name, mode, None, None)
 
-    eval_model(
-        model,
-        pipeline,
-        save=True,
-        plot_save_to=plot_path,
-        perf_save_to=performance_path,
-        criteria=criteria,
+    loader = pipeline.get_data_loader(batch_size=16, shuffle=False, seed=SEED)
+    expected, predicted = predict(model, loader, DEVICE, criteria)
+    confusion, report = compute_metrics(expected, predicted)
+
+    plot_confusion_matrix(
+        confusion,
+        dpi=300,
+        save=save,
+        save_to=plot_path,
+        run=(f"{run_name} " if run_name != "" else "") + "Confusion Matrix",
         mode=mode,
+        show=False,
     )
-    predicted_pipe = pipeline.set_nn_clf(model).nn_predict(criteria, DEVICE)
-    save_prediction(predicted_pipe, output_path)
-    failure_analysis(predicted_pipe, failure_path)
+
+    predicted_pipe = ImagePipeline.from_arrays(
+        pipeline.images,
+        pipeline.gt,
+        predicted,
+    )
+    save_performance_json(perf_path, mode, report)
+    predicted_pipe.save(output_path)
+    predicted_pipe.select_failures(10).save(fail_path, True)
 
 
 def get_pipe(mode: Mode) -> ImagePipeline:

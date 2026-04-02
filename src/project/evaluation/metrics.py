@@ -73,53 +73,52 @@ def evaluate_metrics(
 
 
 @torch.no_grad()
-def evaluate_neural_network(
+def predict(
     model: nn.Module,
     loader: DataLoader,
     device: device,
     criteria: float,
-):
+) -> tuple[np.ndarray, np.ndarray]:
     assert 0 <= criteria <= 1
     model.eval()
     expected_list, predicted_list = [], []
 
     for x, trues in loader:
         x = x.to(device)
-        logits = model(x)
+        preds = (torch.sigmoid(model(x)) > criteria).int()
 
-        probs = torch.sigmoid(logits)
-        preds = (probs > criteria).int()
+        expected_list.append(trues.view(-1).cpu().numpy())
+        predicted_list.append(preds.view(-1).cpu().numpy())
 
-        trues = trues.view(-1).cpu().numpy()
-        preds = preds.view(-1).cpu().numpy()
+    return np.concatenate(expected_list), np.concatenate(predicted_list)
 
-        expected_list.append(trues)
-        predicted_list.append(preds)
 
-    expected_out = np.concatenate(expected_list)
-
-    predicted_out = np.concatenate(predicted_list)
+def compute_metrics(
+    expected: np.ndarray,
+    predicted: np.ndarray,
+) -> tuple[np.ndarray, dict]:
     class_names = ["soil", "plant"]
-    # Create confusion matrix
-    confusion = confusion_matrix(expected_out, predicted_out, labels=[0, 1])
-    # Calculate accuracy
-    accuracy = accuracy_score(expected_out, predicted_out)
-    # Get classification report
+    confusion = confusion_matrix(expected, predicted, labels=[0, 1])
+    accuracy = accuracy_score(expected, predicted)
     report = classification_report(
-        expected_out,
-        predicted_out,
+        expected,
+        predicted,
         output_dict=True,
         labels=[0, 1],
         target_names=class_names,
     )
-    jaccard = jaccard_score(expected_out, predicted_out, average=None)
+    jaccard = jaccard_score(expected, predicted, average=None)
 
     assert isinstance(jaccard, np.ndarray)
     assert isinstance(report, dict)
 
     for i, name in enumerate(class_names):
         report[name]["iou"] = float(jaccard[i])
-
     report["accuracy"] = accuracy
 
     return confusion, report
+
+
+def evaluate_neural_network(model, loader, device, criteria):
+    expected, predicted = predict(model, loader, device, criteria)
+    return compute_metrics(expected, predicted)

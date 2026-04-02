@@ -80,8 +80,8 @@ class ImagePipeline:
         self.current += 1
         return result
 
-    def copy(self) -> Self:
-        return self.__class__(self.images.copy(), self.gt, self.image_state, self.title)
+    def copy(self) -> ImagePipeline:
+        return ImagePipeline(self.images.copy(), self.gt, self.image_state, self.title)
 
     def _cmap(self: Self) -> str | None:
         return {
@@ -105,9 +105,9 @@ class ImagePipeline:
         plt.tight_layout()
         plt.show()
 
-    def normalize(self: Self) -> Self:
+    def normalize(self: Self) -> ImagePipeline:
         ims = self.images.astype(np.float32) / 255
-        return self.__class__(
+        return ImagePipeline(
             ims.copy(), self.gt, self.image_state, self.title, self.nn_clf
         )
 
@@ -147,11 +147,11 @@ class ImagePipeline:
                     gt = (gt > 0).astype(np.uint8) * 255
                 cv.imwrite(str(save_to / f"ground_truth_{i}.png"), gt)
 
-    def set_nn_clf(self: Self, clf: nn.Module) -> Self:
+    def set_nn_clf(self: Self, clf: nn.Module) -> ImagePipeline:
         self.nn_clf = clf
         return self
 
-    def nn_predict(self: Self, criteria: float, device: torch.device) -> Self:
+    def nn_predict(self: Self, criteria: float, device: torch.device) -> ImagePipeline:
         assert 0 <= criteria <= 1
         assert self.nn_clf is not None
 
@@ -175,16 +175,45 @@ class ImagePipeline:
 
                 ims.append(preds)
 
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def select_failures(self: Self, bottom_n: int) -> Self:
+    @staticmethod
+    def select_failures_from_arrays(
+        images: np.ndarray,
+        gt: np.ndarray,
+        predicted: np.ndarray,
+        bottom_n: int,
+        title: str = "",
+    ) -> ImagePipeline:
+
+        N = len(images)
+        H, W = gt.shape[1], gt.shape[2]
+
+        pred_maps = predicted.reshape(N, H, W).astype(np.uint8) * 255
+        gt_maps = gt.reshape(N, H, W)
+
+        scores = []
+        for i in range(N):
+            iou = ImagePipeline.per_image_iou(gt_maps[i], pred_maps[i])
+            scores.append((i, iou))
+
+        worst_indices = [s[0] for s in sorted(scores, key=lambda x: x[1])[:bottom_n]]
+
+        return ImagePipeline(
+            np.array([pred_maps[i] for i in worst_indices]),
+            np.array([gt_maps[i] for i in worst_indices]),
+            ImageState.BINARY,
+            title,
+        )
+
+    def select_failures(self: Self, bottom_n: int) -> ImagePipeline:
         assert self.image_state == ImageState.BINARY
         scores = []
         for i, (gt, pred) in enumerate(zip(self.gt, self.images)):
             scores.append((i, self.per_image_iou(gt, pred), pred, gt))
 
         worst = sorted(scores, key=lambda x: x[1])[:bottom_n]
-        return self.__class__(
+        return ImagePipeline(
             np.array([w[2] for w in worst]),
             np.array([w[3] for w in worst]),
             ImageState.BINARY,
@@ -202,7 +231,7 @@ class ImagePipeline:
         inter = np.logical_and(gt_bin, pred_bin).sum()
         return inter / union
 
-    def concat(self: Self, other: np.ndarray | ImagePipeline) -> Self:
+    def concat(self: Self, other: np.ndarray | ImagePipeline) -> ImagePipeline:
         ims = []
         assert len(self) == len(other)
         for im, o in zip(self.images, other):
@@ -212,36 +241,36 @@ class ImagePipeline:
                 o = o[..., None]
             ims.append(np.concatenate((im, o), axis=2))
 
-        return self.__class__(ims, self.gt, ImageState.MULTICHANNEL, self.title)
+        return ImagePipeline(ims, self.gt, ImageState.MULTICHANNEL, self.title)
 
-    def invert(self: Self) -> Self:
+    def invert(self: Self) -> ImagePipeline:
         assert self.image_state == ImageState.BINARY
         ims = [cv.bitwise_not(im, None, None) for im in self.images]
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def rgb_to_gray(self: Self) -> Self:
+    def rgb_to_gray(self: Self) -> ImagePipeline:
         assert self.image_state == ImageState.RGB
         ims = [cv.cvtColor(im, cv.COLOR_RGB2GRAY) for im in self.images]
 
         state = ImageState.GRAY
-        return self.__class__(ims, self.gt, state, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, state, self.title, self.nn_clf)
 
-    def gray_to_rgb(self: Self) -> Self:
+    def gray_to_rgb(self: Self) -> ImagePipeline:
         assert self.image_state == ImageState.GRAY
         ims = [cv.cvtColor(im, cv.COLOR_GRAY2RGB) for im in self.images]
-        return self.__class__(ims, self.gt, ImageState.RGB, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.RGB, self.title, self.nn_clf)
 
-    def rgb_to_hsv(self: Self) -> Self:
+    def rgb_to_hsv(self: Self) -> ImagePipeline:
         assert self.image_state == ImageState.RGB
         ims = [cv.cvtColor(im, cv.COLOR_RGB2HSV) for im in self.images]
-        return self.__class__(ims, self.gt, ImageState.HSV, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.HSV, self.title, self.nn_clf)
 
-    def hsv_to_rgb(self: Self) -> Self:
+    def hsv_to_rgb(self: Self) -> ImagePipeline:
         assert self.image_state == ImageState.HSV
         ims = [cv.cvtColor(im, cv.COLOR_HSV2RGB) for im in self.images]
-        return self.__class__(ims, self.gt, ImageState.RGB, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.RGB, self.title, self.nn_clf)
 
-    def k_means_clustering(self: Self, k: int, criteria: TermCriteria) -> Self:
+    def k_means_clustering(self: Self, k: int, criteria: TermCriteria) -> ImagePipeline:
         ims = []
         for im in self.images:
             h, w, c = im.shape
@@ -261,14 +290,14 @@ class ImagePipeline:
             mask = (labels == green_idx).astype(np.uint8) * 255
 
             ims.append(mask)
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def in_color_range(self: Self, lower: MatLike, upper: MatLike) -> Self:
+    def in_color_range(self: Self, lower: MatLike, upper: MatLike) -> ImagePipeline:
         assert self.image_state == ImageState.HSV
         ims = [cv.inRange(im, lower, upper) for im in self.images]
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def otsu(self: Self) -> Self:
+    def otsu(self: Self) -> ImagePipeline:
         ims = []
         for i in range(len(self.images)):
             _, im = cv.threshold(
@@ -276,9 +305,9 @@ class ImagePipeline:
             )
             ims.append(im)
 
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def fill_contours(self: Self) -> Self:
+    def fill_contours(self: Self) -> ImagePipeline:
         assert self.image_state == ImageState.BINARY
         ims = []
         for i in range(len(self.images)):
@@ -292,19 +321,21 @@ class ImagePipeline:
                 )
             )
 
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def gaussian_blur(self: Self, kernel_size: tuple[int, int], sigma_x: float) -> Self:
+    def gaussian_blur(
+        self: Self, kernel_size: tuple[int, int], sigma_x: float
+    ) -> ImagePipeline:
         ims = [cv.GaussianBlur(im, kernel_size, sigma_x) for im in self.images]
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
-    def canny_edge_detect(self: Self, th1: float, th2: float) -> Self:
+    def canny_edge_detect(self: Self, th1: float, th2: float) -> ImagePipeline:
         ims = [cv.Canny(im, threshold1=th1, threshold2=th2) for im in self.images]
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def remove_small_object(self: Self, min_area: int = 1000) -> Self:
+    def remove_small_object(self: Self, min_area: int = 1000) -> ImagePipeline:
         ims = []
         for im in self.images:
             num_labels, labels, stats, _ = cv.connectedComponentsWithStats(
@@ -318,38 +349,38 @@ class ImagePipeline:
                     resulting_image[labels == i] = 255
             ims.append(resulting_image)
 
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
-    def brightness_shift(self: Self, beta: float) -> Self:
+    def brightness_shift(self: Self, beta: float) -> ImagePipeline:
         ims = [
             np.clip(im.astype(np.int16) + beta, 0, 255).astype(np.uint8)
             for im in self.images
         ]
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
-    def contrast_shift(self: Self, alpha: float) -> Self:
+    def contrast_shift(self: Self, alpha: float) -> ImagePipeline:
         ims = [
             np.clip(im.astype(np.float32) * alpha, 0, 255).astype(np.uint8)
             for im in self.images
         ]
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
-    def jpeg_compression(self: Self, quality: int) -> Self:
+    def jpeg_compression(self: Self, quality: int) -> ImagePipeline:
         ims = []
         for im in self.images:
             _, encoded = cv.imencode(".jpg", im, [cv.IMWRITE_JPEG_QUALITY, quality])
             ims.append(cv.imdecode(encoded, cv.IMREAD_COLOR))
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
-    def excessive_green_mask(self: Self, threshold: int) -> Self:
+    def excessive_green_mask(self: Self, threshold: int) -> ImagePipeline:
         assert self.image_state == ImageState.RGB
         ims = []
         for i in range(len(self.images)):
@@ -359,34 +390,38 @@ class ImagePipeline:
             b = image[:, :, 2]
             processed = (2 * g - r - b > threshold).astype(np.uint8) * 255
             ims.append(processed)
-        return self.__class__(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
 
-    def opening(self: Self, kernel_size: tuple[int, int], iters: int = 4) -> Self:
+    def opening(
+        self: Self, kernel_size: tuple[int, int], iters: int = 4
+    ) -> ImagePipeline:
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, ksize=kernel_size)
         ims = [
             cv.morphologyEx(im, cv.MORPH_OPEN, kernel, iterations=iters)
             for im in self.images
         ]
 
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
-    def closing(self: Self, kernel_size: tuple[int, int], iters: int = 4) -> Self:
+    def closing(
+        self: Self, kernel_size: tuple[int, int], iters: int = 4
+    ) -> ImagePipeline:
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, ksize=kernel_size)
         ims = [
             cv.morphologyEx(im, cv.MORPH_CLOSE, kernel, iterations=iters)
             for im in self.images
         ]
 
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
-    def apply(self: Self, func: Callable, *args: Any, **kwargs: Any) -> Self:
+    def apply(self: Self, func: Callable, *args: Any, **kwargs: Any) -> ImagePipeline:
         ims = [func(im, *args, **kwargs) for im in self.images]
 
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
@@ -417,7 +452,7 @@ class ImagePipeline:
 
         raise ValueError(f"Unsupported conversion: {self.image_state} -> {color}")
 
-    def gaussian_noise(self: Self, var: float = 0.01) -> Self:
+    def gaussian_noise(self: Self, var: float = 0.01) -> ImagePipeline:
         ims = np.array(
             [
                 (random_noise(im / 255.0, mode="gaussian", var=var) * 255)
@@ -425,7 +460,7 @@ class ImagePipeline:
             ]
         ).astype(np.uint8)
 
-        return self.__class__(
+        return ImagePipeline(
             ims, self.gt, copy(self.image_state), self.title, self.nn_clf
         )
 
@@ -454,7 +489,7 @@ class ImagePipeline:
         )
         return dst_pts
 
-    def warp_perspective(self: Self, distortion_intensity: float) -> Self:
+    def warp_perspective(self: Self, distortion_intensity: float) -> ImagePipeline:
         ims = []
         gts = []
 
@@ -495,7 +530,7 @@ class ImagePipeline:
                 )
             )
 
-        return self.__class__(
+        return ImagePipeline(
             np.array(ims),
             np.array(gts),
             copy(self.image_state),
@@ -503,7 +538,7 @@ class ImagePipeline:
             self.nn_clf,
         )
 
-    def warp_affine(self: Self, angle: float, scale: float) -> Self:
+    def warp_affine(self: Self, angle: float, scale: float) -> ImagePipeline:
         ims = []
         gts = []
 
@@ -530,7 +565,7 @@ class ImagePipeline:
                 )
             )
 
-        return self.__class__(
+        return ImagePipeline(
             np.array(ims),
             np.array(gts),
             copy(self.image_state),
