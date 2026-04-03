@@ -4,6 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from project.utils.string_process import snake_to_pascal
+
 
 def plot_line_plot(
     dataframe: pd.DataFrame,
@@ -43,18 +45,20 @@ def plot_line_plot(
             spine.set_visible(True)
             spine.set_linewidth(0.8)
             spine.set_color("black")
-        ax.set_title(title, fontsize=15, fontweight="bold")
+        ax.set_title(title, fontsize=15, fontweight="bold", y=1.04)
         ax.set_xlabel(x, fontsize=12, fontweight="bold")
         ax.set_xticks(sorted(dataframe[x].unique()))
         ax.set_ylabel(y, fontsize=12, fontweight="bold")
         ax.margins(x=0, y=0)
-        plt.suptitle(run, fontsize=24, fontweight="bold")
+        plt.suptitle(run, fontsize=24, fontweight="bold", y=1.04)
         if save:
             assert save_to is not None
             save_to.mkdir(parents=True, exist_ok=True)
             fig.savefig(
                 save_to / file_name,
                 dpi=dpi,
+                bbox_inches="tight",
+                pad_inches=0.3,
             )
         if show:
             plt.show()
@@ -74,10 +78,9 @@ def plot_bar_chart(
 ):
     with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
         fig, ax = plt.subplots(1, 1, figsize=(16, 7), constrained_layout=True, dpi=dpi)
-        df_melt = dataframe.melt(id_vars=[x], value_name=y, var_name="metric_types")
-        sns.barplot(data=df_melt, x=x, y=y, hue="metric_types", ax=ax, errorbar="sd")
-
-        ax.set_title(title, fontsize=24, fontweight="bold")
+        df_melt = dataframe.melt(id_vars=[x], value_name=y, var_name="Metric Types")
+        sns.barplot(data=df_melt, x=x, y=y, hue="Metric Types", ax=ax, errorbar="sd")
+        ax.set_title(title, fontsize=24, fontweight="bold", y=1.04)
         ax.set_xlabel(x, fontsize=12, fontweight="bold")
         ax.set_ylabel(y, fontsize=12, fontweight="bold")
         min_value = df_melt["Metrics"].min()
@@ -91,6 +94,8 @@ def plot_bar_chart(
             fig.savefig(
                 save_to / file_name,
                 dpi=dpi,
+                bbox_inches="tight",
+                pad_inches=0.3,
             )
         if show:
             plt.show()
@@ -156,7 +161,8 @@ def plot_confusion_matrix(
         cbar1 = ax0.collections[0].colorbar
         cbar1.ax.set_ylabel("Number of Samples", rotation=270, labelpad=15, va="bottom")  # type: ignore
 
-        ax.set_title(run, fontsize=15, fontweight="bold")
+        plt.suptitle(run, fontsize=24, fontweight="bold", y=1.04)
+        ax.set_title(snake_to_pascal(mode), fontsize=15, fontweight="bold", y=1.04)
 
         ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
         ax.tick_params(axis="x", labelsize=9, width=0.5)
@@ -172,6 +178,8 @@ def plot_confusion_matrix(
             fig.savefig(
                 save_to / f"confusion_matrix_{mode}",
                 dpi=dpi,
+                bbox_inches="tight",
+                pad_inches=0.3,
             )
         if show:
             plt.show()

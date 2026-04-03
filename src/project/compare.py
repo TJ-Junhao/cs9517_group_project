@@ -14,6 +14,7 @@ from project.utils.constant import (
     get_performance_path,
     get_plot_path,
 )
+from project.utils.string_process import snake_to_pascal
 from project.visualization.plot import plot_line_plot, plot_bar_chart
 
 
@@ -45,12 +46,12 @@ def compare_between_models(config_file: str, dataset_type: str) -> None:
     dataframe = pd.DataFrame(
         {
             "Models": runs,
-            "Plant_IoU": plant_iou,
-            "Soil_IoU": soil_iou,
-            "Plant_F1": plant_f1,
-            "Pixel_Accuracy": accuracy,
+            "Plant IoU": plant_iou,
+            "Soil IoU": soil_iou,
+            "Plant F1": plant_f1,
+            "Pixel Accuracy": accuracy,
         }
-    ).sort_values("Plant_IoU", ascending=True)
+    ).sort_values("Plant IoU", ascending=True)
     plot_bar_chart(
         dataframe,
         "Models",
@@ -93,9 +94,9 @@ def compare_between_levels(run_name: str, dataset_type: str) -> None:
             save_to=plot_path,
             show=False,
             run=run_name,
-            title=f"IoU at Different Level of {corrupt_type.name}",
+            title=f"IoU at Different Level of {snake_to_pascal(corrupt_type.name)}",
             file_name=f"robustness_iou_{dataset_type}",
-            palette=["#1ff54a", "#89620d"],
+            palette=["#0f671f", "#bd8a1c"],
         )
 
 
