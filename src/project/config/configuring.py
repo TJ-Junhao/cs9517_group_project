@@ -1,8 +1,30 @@
 import argparse
 import json
 
-from project.utils.constant import CONFIG_PATH, REGULAR_CHANNEL_IN
+from project.utils.constant import (
+    CONFIG_PATH,
+    REGULAR_CHANNEL_IN,
+    COMPARE_MODE,
+    EVALUATION_MODE,
+)
 from project.utils.registry import MODELS
+
+
+def compare_arg_parse(prog: str) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog=prog)
+    parser.add_argument(
+        "-m",
+        "--mode",
+        type=str,
+        default="cross_model",
+        choices=COMPARE_MODE,
+        required=True,
+    )
+    parser.add_argument("-D", "--dataset", choices=EVALUATION_MODE, default="test")
+    parser.add_argument("-R", "--run", type=str, default=None)
+    parser.add_argument("-C", "--config", type=str, default=None)
+    args = parser.parse_args()
+    return args
 
 
 def eval_arg_parse(prog: str) -> argparse.Namespace:

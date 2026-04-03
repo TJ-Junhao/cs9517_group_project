@@ -5,47 +5,91 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def plot_loss_curve(
-    data_frame: pd.DataFrame,
+def plot_line_plot(
+    dataframe: pd.DataFrame,
+    x: str,
+    y: str,
     save: bool = False,
     save_to: Path | None = None,
     run: str = "undefined",
     dpi: int = 600,
     show: bool = True,
+    title: str = "undefined",
+    file_name="undefined",
+    palette: list[str] = ["#e71c22", "#0d61e8"],
 ) -> None:
     with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
         fig, ax = plt.subplots(1, 1, figsize=(16, 7), constrained_layout=True, dpi=dpi)
-        palette = ["#e71c22", "#0d61e8"]
 
-        df_melt = pd.melt(data_frame, ["Epoch"])
+        df_melt = (
+            dataframe.melt(id_vars=[x], value_name=y)
+            .sort_values(x)
+            .reset_index(drop=True)
+        )
         sns.lineplot(
-            x="Epoch",
-            y="value",
+            x=x,
+            y=y,
             hue="variable",
             data=df_melt,
             lw=1.7,
             ax=ax,
             palette=palette,
+            errorbar=None,
         )
         for var, color in zip(df_melt["variable"].unique(), palette):
             subset = df_melt[df_melt["variable"] == var]
-            ax.fill_between(subset["Epoch"], subset["value"], color=color, alpha=0.2)
+            ax.fill_between(subset[x], subset[y], color=color, alpha=0.2)
         for _, spine in ax.spines.items():
             spine.set_visible(True)
             spine.set_linewidth(0.8)
             spine.set_color("black")
-        ax.set_title(
-            "Training and Validation Loss Curves", fontsize=15, fontweight="bold"
-        )
-        ax.set_xlabel("Epoch", fontsize=12, fontweight="bold")
-        ax.set_ylabel("Loss", fontsize=12, fontweight="bold")
+        ax.set_title(title, fontsize=15, fontweight="bold")
+        ax.set_xlabel(x, fontsize=12, fontweight="bold")
+        ax.set_xticks(sorted(dataframe[x].unique()))
+        ax.set_ylabel(y, fontsize=12, fontweight="bold")
         ax.margins(x=0, y=0)
         plt.suptitle(run, fontsize=24, fontweight="bold")
         if save:
             assert save_to is not None
             save_to.mkdir(parents=True, exist_ok=True)
             fig.savefig(
-                save_to / "training_and_validation_loss_curves",
+                save_to / file_name,
+                dpi=dpi,
+            )
+        if show:
+            plt.show()
+        plt.close(fig)
+
+
+def plot_bar_chart(
+    dataframe: pd.DataFrame,
+    x: str = "models",
+    y: str = "metrics",
+    save: bool = False,
+    save_to: Path | None = None,
+    dpi: int = 600,
+    show: bool = True,
+    title: str = "undefined",
+    file_name="undefined",
+):
+    with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
+        fig, ax = plt.subplots(1, 1, figsize=(16, 7), constrained_layout=True, dpi=dpi)
+        df_melt = dataframe.melt(id_vars=[x], value_name=y, var_name="metric_types")
+        sns.barplot(data=df_melt, x=x, y=y, hue="metric_types", ax=ax, errorbar="sd")
+
+        ax.set_title(title, fontsize=24, fontweight="bold")
+        ax.set_xlabel(x, fontsize=12, fontweight="bold")
+        ax.set_ylabel(y, fontsize=12, fontweight="bold")
+        min_value = df_melt["Metrics"].min()
+        max_value = df_melt["Metrics"].max()
+        ax.set_ylim(min_value - 0.02, max_value + 0.02)
+        for container in ax.containers:
+            ax.bar_label(container, fmt="%.3f")  # type: ignore
+        if save:
+            assert save_to is not None
+            save_to.mkdir(parents=True, exist_ok=True)
+            fig.savefig(
+                save_to / file_name,
                 dpi=dpi,
             )
         if show:
@@ -68,7 +112,18 @@ def plot_train_process(
             "Validation Loss": val_log,
         }
     )
-    plot_loss_curve(train_data, save=save, save_to=save_to, run=run, show=show)
+    plot_line_plot(
+        train_data,
+        "Epoch",
+        "Loss",
+        save=save,
+        save_to=save_to,
+        run=run,
+        show=show,
+        title="Training and Validation Loss Curves",
+        file_name="training_and_validation_loss_curves",
+        palette=["#e71c22", "#0d61e8"],
+    )
 
 
 def plot_confusion_matrix(

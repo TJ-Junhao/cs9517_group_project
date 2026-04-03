@@ -22,9 +22,12 @@ def find_root() -> Path:
     return p
 
 
+EVALUATION_MODE = ["train", "test", "validation"]
+COMPARE_MODE = ["cross_model", "robustness_level"]
+
 ROOT_PATH = find_root()
 RUNS_PATH = ROOT_PATH / "runs"
-
+COMPARISON_PATH = ROOT_PATH / "comparisons"
 DATA_PATH = ROOT_PATH / "datasets" / "EWS-Dataset"
 TRAIN_PATH = DATA_PATH / "train"
 VAL_PATH = DATA_PATH / "validation"
@@ -41,7 +44,7 @@ INTENSITY_RANGE = (0, 256)
 LOWER_GREEN = np.array([35, 40, 40])
 UPPER_GREEN = np.array([90, 255, 255])
 
-EVALUATION_MODE = ["train", "test", "validation"]
+
 NOISE_LEVELS = [0.005, 0.01, 0.05, 0.1, 0.2]
 
 BLUR_LEVELS = [(3, 3), (5, 5), (7, 7), (11, 11), (15, 15)]
@@ -63,6 +66,8 @@ def get_plot_path(
 ) -> Path:
     if corruption is None:
         return get_run_path(run_name) / "plots"
+    if level is None:
+        return get_run_path(run_name) / "plots" / "robustness" / corruption
     return (
         get_run_path(run_name) / "plots" / "robustness" / corruption / f"level_{level}"
     )
