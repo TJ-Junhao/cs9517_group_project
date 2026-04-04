@@ -1,0 +1,32 @@
+{
+  "soil": {
+    "precision": 0.9609688978750003,
+    "recall": 0.8522481379547046,
+    "f1-score": 0.903349061544193,
+    "support": 1998743.0,
+    "iou": 0.8237343623817054
+  },
+  "plant": {
+    "precision": 0.7541237748567128,
+    "recall": 0.9290355535087332,
+    "f1-score": 0.8324913592921444,
+    "support": 974953.0,
+    "iou": 0.713049420163099
+  },
+  "accuracy": 0.8774235833118113,
+  "macro avg": {
+    "precision": 0.8575463363658565,
+    "recall": 0.8906418457317189,
+    "f1-score": 0.8679202104181687,
+    "support": 2973696.0
+  },
+  "weighted avg": {
+    "precision": 0.8931528624692128,
+    "recall": 0.8774235833118113,
+    "f1-score": 0.8801177260668135,
+    "support": 2973696.0
+  },
+  "inference_time_seconds": 0.09819079999579117,
+  "model_type": "logistic_regression",
+  "feature_mode": "rgb_hsv"
+}

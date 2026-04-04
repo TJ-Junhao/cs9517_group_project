@@ -184,3 +184,107 @@ def plot_confusion_matrix(
         if show:
             plt.show()
         plt.close(fig)
+
+
+def plot_rf_feature_comparison(
+    labels: list[str],
+    plant_iou: list[float],
+    plant_f1: list[float],
+    plant_recall: list[float],
+    pixel_acc: list[float],
+    save_path: str | Path,
+) -> None:
+    x = np.arange(len(labels))
+    width = 0.2
+
+    fig, ax = plt.subplots(figsize=(12, 7))
+
+    bars1 = ax.bar(x - 1.5 * width, plant_iou, width, label="Plant IoU")
+    bars2 = ax.bar(x - 0.5 * width, plant_f1, width, label="Plant F1")
+    bars3 = ax.bar(x + 0.5 * width, plant_recall, width, label="Plant Recall")
+    bars4 = ax.bar(x + 1.5 * width, pixel_acc, width, label="Pixel Accuracy")
+
+    ax.set_title("Random Forest Feature Comparisons", fontsize=18, fontweight="bold")
+    ax.set_xlabel("Feature Sets", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Score", fontsize=12, fontweight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.set_ylim(0.6, 1.0)
+    ax.legend(title="Metric Types")
+
+    def add_labels(bars):
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                h + 0.003,
+                f"{h:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
+
+    add_labels(bars1)
+    add_labels(bars2)
+    add_labels(bars3)
+    add_labels(bars4)
+
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_classifier_comparison(
+    labels: list[str],
+    plant_iou: list[float],
+    plant_f1: list[float],
+    train_time: list[float],
+    inference_time: list[float],
+    save_path: str | Path,
+) -> None:
+    x = np.arange(len(labels))
+    width = 0.2
+
+    fig, ax = plt.subplots(figsize=(12, 7))
+
+    bars1 = ax.bar(x - 1.5 * width, plant_iou, width, label="Plant IoU")
+    bars2 = ax.bar(x - 0.5 * width, plant_f1, width, label="Plant F1")
+    bars3 = ax.bar(x + 0.5 * width, train_time, width, label="Training Time (s)")
+    bars4 = ax.bar(x + 1.5 * width, inference_time, width, label="Inference Time (s)")
+
+    ax.set_title("Classifier Comparisons", fontsize=18, fontweight="bold")
+    ax.set_xlabel("Classifiers", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Value", fontsize=12, fontweight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.legend(title="Metric Types")
+
+    def add_labels(bars):
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                h + (0.01 if h > 1 else 0.003),
+                f"{h:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
+
+    add_labels(bars1)
+    add_labels(bars2)
+    add_labels(bars3)
+    add_labels(bars4)
+
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    
+    
+ 

@@ -3,27 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 import cv2 as cv
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 
 from project.processing.pipeline import ImagePipeline, ImageState
 
 
 @dataclass
-class RFConfig:
-    n_estimators: int = 100
-    max_depth: int | None = 15
-    samples_per_class: int = 2000
+class LRConfig:
+    max_iter: int = 1000
     random_state: int = 42
-    n_jobs: int = -1
+    samples_per_class: int = 500
 
 
-def extract_features_from_image(image: np.ndarray, feature_mode: str = "rgb_hsv_exg") -> np.ndarray:
-    """
-    feature_mode:
-        - rgb
-        - rgb_hsv
-        - rgb_hsv_exg
-    """
+def extract_features_from_image(
+    image: np.ndarray,
+    feature_mode: str = "rgb_hsv_exg",
+) -> np.ndarray:
     rgb = image.astype(np.float32)
     r = rgb[:, :, 0]
     g = rgb[:, :, 1]
@@ -49,8 +44,8 @@ def extract_features_from_image(image: np.ndarray, feature_mode: str = "rgb_hsv_
 
     raise ValueError(f"Unsupported feature_mode: {feature_mode}")
 
-def mask_to_labels(mask: np.ndarray) -> np.ndarray:
 
+def mask_to_labels(mask: np.ndarray) -> np.ndarray:
     return (mask.reshape(-1) == 0).astype(np.uint8)
 
 
@@ -80,7 +75,7 @@ def sample_balanced_pixels(
 
 def build_training_set(
     pipe: ImagePipeline,
-    samples_per_class: int = 2000,
+    samples_per_class: int = 500,
     random_state: int = 42,
     feature_mode: str = "rgb_hsv_exg",
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -101,11 +96,12 @@ def build_training_set(
     y = np.concatenate(ys, axis=0)
     return x, y
 
-def train_random_forest(
+
+def train_logistic_regression(
     pipe_train: ImagePipeline,
-    config: RFConfig,
+    config: LRConfig,
     feature_mode: str = "rgb_hsv_exg",
-) -> RandomForestClassifier:
+) -> LogisticRegression:
     x_train, y_train = build_training_set(
         pipe_train,
         samples_per_class=config.samples_per_class,
@@ -113,17 +109,17 @@ def train_random_forest(
         feature_mode=feature_mode,
     )
 
-    model = RandomForestClassifier(
-        n_estimators=config.n_estimators,
-        max_depth=config.max_depth,
+    model = LogisticRegression(
+        max_iter=config.max_iter,
         random_state=config.random_state,
-        n_jobs=config.n_jobs,
+        n_jobs=-1,
     )
     model.fit(x_train, y_train)
     return model
 
+
 def predict_mask(
-    model: RandomForestClassifier,
+    model: LogisticRegression,
     image: np.ndarray,
     feature_mode: str = "rgb_hsv_exg",
 ) -> np.ndarray:
@@ -134,9 +130,9 @@ def predict_mask(
 
 
 def predict_pipeline(
-    model: RandomForestClassifier,
+    model: LogisticRegression,
     pipe: ImagePipeline,
-    title: str = "RF Prediction",
+    title: str = "LR Prediction",
     feature_mode: str = "rgb_hsv_exg",
 ) -> ImagePipeline:
     preds = [

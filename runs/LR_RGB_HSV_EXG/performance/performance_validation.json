@@ -1,0 +1,35 @@
+{
+  "soil": {
+    "precision": 0.966272290102663,
+    "recall": 0.8703136683929068,
+    "f1-score": 0.9157861384876663,
+    "support": 2047417.0,
+    "iou": 0.844654519736786
+  },
+  "plant": {
+    "precision": 0.7649424045948846,
+    "recall": 0.932852844553315,
+    "f1-score": 0.8405945279959998,
+    "support": 926279.0,
+    "iou": 0.725022046465811
+  },
+  "accuracy": 0.8897940475421832,
+  "macro avg": {
+    "precision": 0.8656073473487738,
+    "recall": 0.9015832564731109,
+    "f1-score": 0.878190333241833,
+    "support": 2973696.0
+  },
+  "weighted avg": {
+    "precision": 0.9035598793457265,
+    "recall": 0.8897940475421832,
+    "f1-score": 0.8923646422168269,
+    "support": 2973696.0
+  },
+  "train_time_seconds": 4.125925200001802,
+  "validation_inference_time_seconds": 0.10343419999117032,
+  "model_type": "logistic_regression",
+  "max_iter": 1000,
+  "samples_per_class": 500,
+  "feature_mode": "rgb_hsv_exg"
+}

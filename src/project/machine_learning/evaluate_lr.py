@@ -10,11 +10,10 @@ import joblib
 import numpy as np
 
 from project.data.imageio import load_data
-from project.models.random_forest import predict_pipeline
+from project.models.logistic_regression import predict_pipeline
 from project.evaluation.metrics import compute_metrics
 from project.utils.file_helper import ensure_dirs_exist
 from project.utils.constant import (
-    SEED,
     TRAIN_PATH,
     VAL_PATH,
     TEST_PATH,
@@ -52,13 +51,19 @@ def evaluate_predicted_pipe(pred_pipe):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate Random Forest segmentation.")
+    parser = argparse.ArgumentParser(description="Evaluate Logistic Regression segmentation.")
     parser.add_argument("--run", type=str, required=True, help="Run name")
     parser.add_argument(
         "--mode",
         type=str,
         default="test",
         choices=["train", "validation", "test"],
+    )
+    parser.add_argument(
+        "--feature-mode",
+        type=str,
+        default="rgb_hsv_exg",
+        choices=["rgb", "rgb_hsv", "rgb_hsv_exg"],
     )
     return parser.parse_args()
 
@@ -67,7 +72,7 @@ def main():
     args = parse_args()
     ensure_dirs_exist(args.run)
 
-    ckpt = get_checkpoint_path(args.run) / "rf.joblib"
+    ckpt = get_checkpoint_path(args.run) / "lr.joblib"
     if not ckpt.exists():
         raise FileNotFoundError(f"Model not found: {ckpt}")
 
@@ -76,24 +81,28 @@ def main():
     assert pipe is not None
 
     t0 = time.perf_counter()
-    pred_pipe = predict_pipeline(model, pipe, title=f"{args.run} {args.mode} RF")
+    pred_pipe = predict_pipeline(
+        model,
+        pipe,
+        title=f"{args.run} {args.mode} LR",
+        feature_mode=args.feature_mode,
+    )
     infer_time = time.perf_counter() - t0
 
     report = evaluate_predicted_pipe(pred_pipe)
     report["inference_time_seconds"] = infer_time
-    report["model_type"] = "random_forest"
+    report["model_type"] = "logistic_regression"
+    report["feature_mode"] = args.feature_mode
 
     perf_path = get_performance_path(args.run)
     output_path = get_output_path(args.run, args.mode, None, None)
     failure_path = get_failure_path(args.run, args.mode, None, None)
 
     save_performance_json(perf_path, args.mode, report)
-
-
     pred_pipe.save(output_path)
     pred_pipe.select_failures(10).save(failure_path, True)
 
-    print(f"[OK] Evaluated RF run={args.run}, mode={args.mode}")
+    print(f"[OK] Evaluated LR run={args.run}, mode={args.mode}")
     print(f"Inference time: {infer_time:.2f}s")
     print("Accuracy:", report["accuracy"])
 
