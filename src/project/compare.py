@@ -60,7 +60,7 @@ def compare_between_models(config_file: str, dataset_type: str) -> None:
         save_to=COMPARISON_PATH,
         show=False,
         title="Model Comparisons",
-        file_name="comparisons",
+        file_name="deep_learning_comparisons",
     )
 
 

@@ -2,8 +2,8 @@
     "UNet_Baseline": {
         "model": "unet",
         "learning_rate": 1e-4,
-        "epoch": 40,
-        "patience": 5,
+        "epoch": 100,
+        "patience": 10,
         "min_delta": 1e-4,
         "criteria": 0.6,
         "features": [],
@@ -12,8 +12,8 @@
     "ResUnet": {
         "model": "resunet",
         "learning_rate": 1e-4,
-        "epoch": 40,
-        "patience": 5,
+        "epoch": 100,
+        "patience": 10,
         "min_delta": 1e-4,
         "criteria": 0.6,
         "features": [],
@@ -22,8 +22,8 @@
     "ASPPResUnet": {
         "model": "aspp_resunet",
         "learning_rate": 1e-4,
-        "epoch": 40,
-        "patience": 5,
+        "epoch": 100,
+        "patience": 10,
         "min_delta": 1e-4,
         "criteria": 0.6,
         "features": [],
@@ -32,8 +32,8 @@
     "AttentionASPPResUnet": {
         "model": "attention_gate_aspp_resunet",
         "learning_rate": 1e-4,
-        "epoch": 40,
-        "patience": 5,
+        "epoch": 100,
+        "patience": 10,
         "min_delta": 1e-4,
         "criteria": 0.6,
         "features": [],

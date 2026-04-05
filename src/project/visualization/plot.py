@@ -47,12 +47,13 @@ def plot_line_plot(
             spine.set_visible(True)
             spine.set_linewidth(0.8)
             spine.set_color("black")
-        ax.set_title(title, fontsize=15, fontweight="bold", y=1.04)
+
         ax.set_xlabel(x, fontsize=12, fontweight="bold")
         ax.set_xticks(sorted(dataframe[x].unique()))
         ax.set_ylabel(y, fontsize=12, fontweight="bold")
         ax.margins(x=0, y=0)
-        plt.suptitle(run, fontsize=24, fontweight="bold", y=1.04)
+        ax.set_title(title, fontsize=15, fontweight="bold")
+        plt.suptitle(run, fontsize=20, fontweight="bold", y=1.07)
         if save:
             assert save_to is not None
             save_to.mkdir(parents=True, exist_ok=True)
@@ -89,7 +90,7 @@ def plot_bar_chart(
         max_value = df_melt["Metrics"].max()
         ax.set_ylim(min_value - 0.02, max_value + 0.02)
         for container in ax.containers:
-            ax.bar_label(container, fmt="%.3f")  # type: ignore
+            ax.bar_label(container, fmt="%.4f")  # type: ignore
         if save:
             assert save_to is not None
             save_to.mkdir(parents=True, exist_ok=True)
@@ -163,8 +164,8 @@ def plot_confusion_matrix(
         cbar1 = ax0.collections[0].colorbar
         cbar1.ax.set_ylabel("Number of Samples", rotation=270, labelpad=15, va="bottom")  # type: ignore
 
-        plt.suptitle(run, fontsize=24, fontweight="bold", y=1.04)
-        ax.set_title(snake_to_pascal(mode), fontsize=15, fontweight="bold", y=1.04)
+        plt.suptitle(run, fontsize=20, fontweight="bold", y=1.07)
+        ax.set_title(snake_to_pascal(mode), fontsize=15, fontweight="bold", y=1.01)
 
         ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
         ax.tick_params(axis="x", labelsize=9, width=0.5)

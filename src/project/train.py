@@ -63,7 +63,7 @@ def train_model(
         optimizer,
         mode="min",
         factor=0.5,
-        patience=2,
+        patience=5,
         min_lr=1e-6,
     )
     resume: Path | None = None

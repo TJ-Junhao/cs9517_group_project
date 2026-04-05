@@ -74,7 +74,7 @@ def robustness_test(
                 corrupted.images,
                 corrupted.gt,
                 predicted,
-            ).select_failures(10).save(fail_path, True)
+            ).select_failures(10).invert().save(fail_path, True)
 
             plot_confusion_matrix(
                 confusion,
@@ -125,8 +125,8 @@ def normal_evaluation(
         predicted,
     )
     save_performance_json(perf_path, mode, report)
-    predicted_pipe.save(output_path)
-    predicted_pipe.select_failures(10).save(fail_path, True)
+    predicted_pipe.invert().save(output_path)
+    predicted_pipe.select_failures(10).invert().save(fail_path, True)
 
 
 def get_pipe(mode: Mode) -> ImagePipeline:

@@ -13,6 +13,7 @@ dependencies = [
     "scikit-learn",
     "tabulate>=0.10.0",
     "scikit-image",
+    "safetensors>=0.7.0",
 ]
 
 [build-system]
