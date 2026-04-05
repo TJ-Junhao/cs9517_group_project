@@ -2,6 +2,7 @@
 
 import sys
 import json
+import time
 from pathlib import Path
 from typing import Literal
 
@@ -102,8 +103,11 @@ def normal_evaluation(
     fail_path = get_failure_path(run_name, mode, None, None)
 
     loader = pipeline.get_data_loader(batch_size=16, shuffle=False, seed=SEED)
+    start = time.perf_counter()
     expected, predicted = predict(model, loader, DEVICE, criteria)
     confusion, report = compute_metrics(expected, predicted)
+    inference_time = time.perf_counter() - start
+    report["inference_time_seconds"] = inference_time
 
     plot_confusion_matrix(
         confusion,

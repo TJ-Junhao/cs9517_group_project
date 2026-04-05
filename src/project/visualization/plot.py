@@ -18,8 +18,10 @@ def plot_line_plot(
     show: bool = True,
     title: str = "undefined",
     file_name="undefined",
-    palette: list[str] = ["#e71c22", "#0d61e8"],
+    palette: list[str] | None = None,
 ) -> None:
+    if palette is None:
+        palette = ["#e71c22", "#0d61e8"]
     with sns.axes_style("darkgrid"), sns.plotting_context("paper"):
         fig, ax = plt.subplots(1, 1, figsize=(16, 7), constrained_layout=True, dpi=dpi)
 
@@ -285,6 +287,3 @@ def plot_classifier_comparison(
     plt.tight_layout()
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
-    
-    
- 

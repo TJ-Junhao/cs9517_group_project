@@ -1,6 +1,6 @@
 {
-    "resunet": {
-        "title": "ResUnet_LearnableRes",
+    "ResUnet_LearnableRes": {
+        "model": "resunet",
         "learning_rate": 1e-4,
         "epoch": 100,
         "patience": 5,
