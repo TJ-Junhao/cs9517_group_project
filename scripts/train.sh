@@ -11,7 +11,7 @@ if [ -z "$RUN" ] || [ -z "$CONFIG" ]; then
     exit 1
 fi
 
-CMD="python -m project.train -R \"$RUN\" -C \"$CONFIG\""
+CMD="python -m project.deep_learning.train_neural_network -R \"$RUN\" -C \"$CONFIG\""
 
 if [ -n "$RESUME" ]; then
     CMD="$CMD -r $RESUME"

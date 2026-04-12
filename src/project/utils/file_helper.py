@@ -26,13 +26,13 @@ def ensure_dirs_exist(run_name: str) -> None:
                 for i in range(1, len(CORRUPTIONS.get(p, [])) + 1)
             ],
             *[
-                get_output_path(run_name, p, m, i)
+                get_output_path(run_name, m, p, i)
                 for p in CORRUPTIONS.keys()
                 for m in EVALUATION_MODE
                 for i in range(1, len(CORRUPTIONS.get(p, [])) + 1)
             ],
             *[
-                get_failure_path(run_name, p, m, i)
+                get_failure_path(run_name, m, p, i)
                 for p in CORRUPTIONS.keys()
                 for m in EVALUATION_MODE
                 for i in range(1, len(CORRUPTIONS.get(p, [])) + 1)

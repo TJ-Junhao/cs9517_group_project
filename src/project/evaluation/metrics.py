@@ -106,6 +106,7 @@ def compute_metrics(
         output_dict=True,
         labels=[0, 1],
         target_names=class_names,
+        zero_division=0,
     )
     jaccard = jaccard_score(expected, predicted, average=None)
 

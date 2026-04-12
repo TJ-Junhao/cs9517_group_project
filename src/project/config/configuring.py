@@ -6,8 +6,46 @@ from project.utils.constant import (
     REGULAR_CHANNEL_IN,
     COMPARE_MODE,
     EVALUATION_MODE,
+    NN_VALID_PARAM,
+    TRADITIONAL_CV_VALID_PARAM,
+    METHODOLOGIES,
 )
-from project.utils.registry import MODELS
+from project.utils.registry import MODELS, TRADITIONAL_CV_METHODS
+from project.data.json import read_json
+
+
+def traditional_cv_arg_parse(prog: str) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog=prog)
+    parser.add_argument(
+        "-m",
+        "--mode",
+        type=str,
+        default="test",
+        choices=["test", "train", "validation"],
+    )
+    parser.add_argument(
+        "-M", "--method", choices=TRADITIONAL_CV_METHODS.keys(), default="kmeans_method"
+    )
+    parser.add_argument("-R", "--run", type=str, default=None)
+    parser.add_argument("-C", "--config", type=str, default=None)
+
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument("-R", "--run", type=str, default=None)
+    config_parser.add_argument("-C", "--config", type=str, default=None)
+    config_parser.add_argument("-m", "--mode", type=str, default="test")
+
+    pre_args, extras = config_parser.parse_known_args()
+    if pre_args.config is not None:
+        if extras:
+            parser.error(
+                f"When --config is used, only --resume is allowed, got: {extras}"
+            )
+        apply_config_defaults(
+            parser, pre_args.run, pre_args.config, TRADITIONAL_CV_VALID_PARAM
+        )
+
+    args = parser.parse_args()
+    return args
 
 
 def compare_arg_parse(prog: str) -> argparse.Namespace:
@@ -23,8 +61,33 @@ def compare_arg_parse(prog: str) -> argparse.Namespace:
     parser.add_argument("-D", "--dataset", choices=EVALUATION_MODE, default="test")
     parser.add_argument("-R", "--run", type=str, default=None)
     parser.add_argument("-C", "--config", type=str, default=None)
+    parser.add_argument("-M", "--method", choices=METHODOLOGIES, default="dl")
+
     args = parser.parse_args()
     return args
+
+
+def apply_traditional_cv_config_default(
+    parser: argparse.ArgumentParser, run_name: str, config_name: str
+):
+    data = read_json(CONFIG_PATH / config_name)
+
+    config = data.get(run_name)
+    if config is None:
+        raise NameError(f"run name {run_name} not found in {config_name}")
+
+    valid_keys = {"method", "kwargs"}
+
+    unknown_keys = set(config) - valid_keys
+
+    if "resume" in unknown_keys:
+        raise ValueError(
+            "'resume' is runtime-only and must be provided via command line, not config"
+        )
+    if unknown_keys:
+        raise ValueError(f"Unknown config keys: {sorted(unknown_keys)}")
+
+    parser.set_defaults(**config)
 
 
 def eval_arg_parse(prog: str) -> argparse.Namespace:
@@ -60,7 +123,7 @@ def eval_arg_parse(prog: str) -> argparse.Namespace:
             parser.error(
                 f"When --config is used, only --resume is allowed, got: {extras}"
             )
-        apply_config_defaults(parser, pre_args.run, pre_args.config)
+        apply_config_defaults(parser, pre_args.run, pre_args.config, NN_VALID_PARAM)
 
     return parser.parse_args()
 
@@ -96,34 +159,19 @@ def train_arg_parse(prog: str) -> argparse.Namespace:
             parser.error(
                 f"When --config is used, only --resume is allowed as extra arg, got: {extras}"
             )
-        apply_config_defaults(parser, pre_args.run, pre_args.config)
+        apply_config_defaults(parser, pre_args.run, pre_args.config, NN_VALID_PARAM)
 
     return parser.parse_args()
 
 
 def apply_config_defaults(
-    parser: argparse.ArgumentParser,
-    run_name: str,
-    config_name: str,
+    parser: argparse.ArgumentParser, run_name: str, config_name: str, valid_keys: set
 ) -> None:
-    with open(CONFIG_PATH / config_name, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = read_json(CONFIG_PATH / config_name)
 
     config = data.get(run_name)
     if config is None:
         raise NameError(f"run name {run_name} not found in {config_name}")
-
-    valid_keys = {
-        "learning_rate",
-        "epoch",
-        "patience",
-        "min_delta",
-        "criteria",
-        "features",
-        "title",
-        "batch_size",
-        "model",
-    }
 
     unknown_keys = set(config) - valid_keys
     if "resume" in unknown_keys:

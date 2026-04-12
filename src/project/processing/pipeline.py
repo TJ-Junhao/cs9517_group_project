@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Self, Callable, Any
+from typing import Self, Callable, Any, overload
 from copy import copy
 from enum import Enum, auto
 from pathlib import Path
@@ -9,10 +9,13 @@ import numpy as np
 import cv2 as cv
 from cv2.typing import MatLike, TermCriteria
 from skimage.util import random_noise
-
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch import nn
+import pydensecrf.densecrf as dcrf
+from pydensecrf.utils import unary_from_labels
+
+from project.data.imageio import read_images
 
 
 class ImageFlag(Enum):
@@ -54,6 +57,77 @@ class ImagePipeline:
         self.image_state = state
         self.nn_clf = nn_clf
 
+    @staticmethod
+    def read_from_path(
+        data_path: Path, title: str = "undefined", resize: tuple[int, int] = (352, 352)
+    ) -> ImagePipeline:
+        ims, gts = read_images(data_path)
+        return ImagePipeline(ims, gts, title=title, resize=resize)
+
+    @staticmethod
+    @overload
+    def load_data(
+        train_path: None, val_path: Path, test_path: Path
+    ) -> tuple[None, ImagePipeline, ImagePipeline]: ...
+
+    @staticmethod
+    @overload
+    def load_data(
+        train_path: Path, val_path: None, test_path: Path
+    ) -> tuple[ImagePipeline, None, ImagePipeline]: ...
+
+    @staticmethod
+    @overload
+    def load_data(
+        train_path: Path, val_path: Path, test_path: None
+    ) -> tuple[ImagePipeline, ImagePipeline, None]: ...
+
+    @staticmethod
+    @overload
+    def load_data(
+        train_path: None, val_path: None, test_path: Path
+    ) -> tuple[None, None, ImagePipeline]: ...
+
+    @staticmethod
+    @overload
+    def load_data(
+        train_path: Path, val_path: None, test_path: None
+    ) -> tuple[ImagePipeline, None, None]: ...
+
+    @staticmethod
+    @overload
+    def load_data(
+        train_path: None, val_path: Path, test_path: None
+    ) -> tuple[None, ImagePipeline, None]: ...
+
+    @staticmethod
+    @overload
+    def load_data(
+        train_path: Path, val_path: Path, test_path: Path
+    ) -> tuple[ImagePipeline, ImagePipeline, ImagePipeline]: ...
+
+    @staticmethod
+    def load_data(
+        train_path: Path | None, val_path: Path | None, test_path: Path | None
+    ) -> tuple[ImagePipeline | None, ImagePipeline | None, ImagePipeline | None]:
+        pipe_train = pipe_val = pipe_test = None
+
+        if train_path is not None:
+            train_x, train_y = read_images(train_path)
+            assert len(train_x) == len(train_y)
+            pipe_train = ImagePipeline(train_x, train_y, ImageState.RGB, "Training Set")
+
+        if val_path is not None:
+            val_x, val_y = read_images(val_path)
+            assert len(val_x) == len(val_y)
+            pipe_val = ImagePipeline(val_x, val_y, ImageState.RGB, "Validation Set")
+
+        if test_path is not None:
+            test_x, test_y = read_images(test_path)
+            assert len(test_x) == len(test_y)
+            pipe_test = ImagePipeline(test_x, test_y, ImageState.RGB, "Test Set")
+        return pipe_train, pipe_val, pipe_test
+
     def __getitem__(self: Self, key: tuple[ImageFlag, int] | int) -> MatLike:
         if isinstance(key, tuple):
             if key[0] == ImageFlag.PROCESS_IM:
@@ -81,7 +155,9 @@ class ImagePipeline:
         return result
 
     def copy(self) -> ImagePipeline:
-        return ImagePipeline(self.images.copy(), self.gt, self.image_state, self.title)
+        return ImagePipeline(
+            self.images.copy(), self.gt, self.image_state, self.title, self.nn_clf
+        )
 
     def _cmap(self: Self) -> str | None:
         return {
@@ -104,6 +180,11 @@ class ImagePipeline:
         plt.suptitle(f"{self.title}: index = {index}", fontsize=16)
         plt.tight_layout()
         plt.show()
+
+    def flatten(self: Self) -> tuple[np.ndarray, np.ndarray]:
+        pred = (self.images.ravel() == 0).astype(np.uint8)
+        gt = (self.gt.ravel() == 0).astype(np.uint8)
+        return pred, gt
 
     def normalize(self: Self) -> ImagePipeline:
         ims = self.images.astype(np.float32) / 255
@@ -139,7 +220,12 @@ class ImagePipeline:
         save_to.mkdir(parents=True, exist_ok=True)
 
         for i, (im, t) in enumerate(zip(self.images, self.gt)):
-            cv.imwrite(str(save_to / f"predicted_{i}.png"), im)
+            out = im
+            if self.image_state == ImageState.RGB:
+                out = cv.cvtColor(im, cv.COLOR_RGB2BGR)
+            elif self.image_state == ImageState.HSV:
+                out = cv.cvtColor(cv.cvtColor(im, cv.COLOR_HSV2RGB), cv.COLOR_RGB2BGR)
+            cv.imwrite(str(save_to / f"predicted_{i}.png"), out)
 
             if save_gt:
                 gt = np.asarray(t)
@@ -179,13 +265,11 @@ class ImagePipeline:
 
     @staticmethod
     def from_arrays(
-        images: np.ndarray,
         gt: np.ndarray,
         predicted: np.ndarray,
         title: str = "",
     ) -> ImagePipeline:
-        N = len(images)
-        H, W = gt.shape[1], gt.shape[2]
+        N, H, W = gt.shape[0], gt.shape[1], gt.shape[2]
         pred_maps = predicted.reshape(N, H, W).astype(np.uint8) * 255
 
         return ImagePipeline(
@@ -211,14 +295,24 @@ class ImagePipeline:
 
     @staticmethod
     def per_image_iou(gt: np.ndarray, pred: np.ndarray) -> float:
-
         gt_bin = gt > 0
         pred_bin = pred > 0
-        union = np.logical_or(gt_bin, pred_bin).sum()
-        if union == 0:
-            return 1.0
-        inter = np.logical_and(gt_bin, pred_bin).sum()
-        return inter / union
+
+        fg_union = np.logical_or(gt_bin, pred_bin).sum()
+        fg_iou = (
+            1.0
+            if fg_union == 0
+            else (np.logical_and(gt_bin, pred_bin).sum() / fg_union)
+        )
+
+        bg_union = np.logical_or(~gt_bin, ~pred_bin).sum()
+        bg_iou = (
+            1.0
+            if bg_union == 0
+            else (np.logical_and(~gt_bin, ~pred_bin).sum() / bg_union)
+        )
+
+        return (fg_iou + bg_iou) / 2
 
     def concat(self: Self, other: np.ndarray | ImagePipeline) -> ImagePipeline:
         ims = []
@@ -260,6 +354,7 @@ class ImagePipeline:
         return ImagePipeline(ims, self.gt, ImageState.RGB, self.title, self.nn_clf)
 
     def k_means_clustering(self: Self, k: int, criteria: TermCriteria) -> ImagePipeline:
+        assert self.image_state == ImageState.RGB
         ims = []
         for im in self.images:
             h, w, c = im.shape
@@ -269,14 +364,15 @@ class ImagePipeline:
                 z, k, None, criteria, 10, cv.KMEANS_RANDOM_CENTERS  # type: ignore
             )  # type: ignore
             labels = labels.reshape((h, w))
-            centers = centers.astype(np.uint8)
-
-            # center -> (label, channel[r, g, b])
-            # choose the label with the highest green value as plant
-            green_idx = np.argmax(centers[:, 1])
+            exg_per_center = (
+                2 * centers[:, 1].astype(int)
+                - centers[:, 0].astype(int)
+                - centers[:, 2].astype(int)
+            )
+            plant_idx = np.argmax(exg_per_center)
 
             # plant is white
-            mask = (labels == green_idx).astype(np.uint8) * 255
+            mask = (labels == plant_idx).astype(np.uint8) * 255
 
             ims.append(mask)
         return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
@@ -561,3 +657,95 @@ class ImagePipeline:
             self.title,
             self.nn_clf,
         )
+
+    def watershed(
+        self: Self,
+        exg_low: int = -20,
+        exg_high: int = 20,
+    ) -> ImagePipeline:
+        assert self.image_state == ImageState.RGB
+        ims = []
+        for im in self.images:
+            img_i = im.astype(np.int16)
+            exg = 2 * img_i[:, :, 1] - img_i[:, :, 0] - img_i[:, :, 2]
+
+            markers = np.zeros(im.shape[:2], dtype=np.int32)
+            markers[exg > exg_high] = 2  # plant seed
+            markers[exg < exg_low] = 1  # soil seed
+
+            # cv.watershed requires BGR
+            bgr = cv.cvtColor(im, cv.COLOR_RGB2BGR)
+            cv.watershed(bgr, markers)
+
+            # markers == 2 → plant (255), boundaries (-1) and soil → 0
+            mask = (markers == 2).astype(np.uint8) * 255
+            ims.append(mask)
+
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+
+    def grabcut(
+        self: Self,
+        exg_threshold: int = 10,
+        iters: int = 5,
+    ) -> ImagePipeline:
+        assert self.image_state == ImageState.RGB
+        ims = []
+        for im in self.images:
+            img_i = im.astype(np.int16)
+            exg = 2 * img_i[:, :, 1] - img_i[:, :, 0] - img_i[:, :, 2]
+
+            gc_mask = np.full(im.shape[:2], cv.GC_PR_BGD, dtype=np.uint8)
+            gc_mask[exg > exg_threshold] = cv.GC_PR_FGD
+            gc_mask[exg > exg_threshold * 2] = cv.GC_FGD
+            gc_mask[exg < -exg_threshold] = cv.GC_BGD
+
+            bgr = cv.cvtColor(im, cv.COLOR_RGB2BGR)
+            bgd_model = np.zeros((1, 65), np.float64)
+            fgd_model = np.zeros((1, 65), np.float64)
+
+            cv.grabCut(bgr, gc_mask, None, bgd_model, fgd_model, iters, cv.GC_INIT_WITH_MASK)  # type: ignore
+
+            mask = np.where(
+                (gc_mask == cv.GC_FGD) | (gc_mask == cv.GC_PR_FGD), 255, 0
+            ).astype(np.uint8)
+            ims.append(mask)
+
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)
+
+    def dense_crf(
+        self: Self,
+        exg_threshold: int = 10,
+        gt_prob: float = 0.7,
+        iters: int = 5,
+        sxy_gaussian: int = 3,
+        compat_gaussian: int = 3,
+        sxy_bilateral: int = 60,
+        srgb_bilateral: int = 13,
+        compat_bilateral: int = 10,
+    ) -> ImagePipeline:
+        assert self.image_state == ImageState.RGB
+
+        ims = []
+        for im in self.images:
+            img_i = im.astype(np.int16)
+            exg = 2 * img_i[:, :, 1] - img_i[:, :, 0] - img_i[:, :, 2]
+            labels = (exg > exg_threshold).astype(np.int32)
+
+            h, w = im.shape[:2]
+            d = dcrf.DenseCRF2D(w, h, 2)
+            U = unary_from_labels(labels, 2, gt_prob=gt_prob, zero_unsure=False)
+            d.setUnaryEnergy(U)
+            d.addPairwiseGaussian(sxy=sxy_gaussian, compat=compat_gaussian)
+            d.addPairwiseBilateral(
+                sxy=sxy_bilateral,
+                srgb=srgb_bilateral,
+                rgbim=np.ascontiguousarray(im),
+                compat=compat_bilateral,
+            )
+
+            Q = d.inference(iters)
+            refined = np.argmax(Q, axis=0).reshape(h, w)
+            mask = (refined == 1).astype(np.uint8) * 255
+            ims.append(mask)
+
+        return ImagePipeline(ims, self.gt, ImageState.BINARY, self.title, self.nn_clf)

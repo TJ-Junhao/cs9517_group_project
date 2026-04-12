@@ -8,12 +8,12 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-from project.data.imageio import load_data
 from project.models.logistic_regression import (
     LRConfig,
     train_logistic_regression,
     predict_pipeline,
 )
+from project.processing.pipeline import ImagePipeline
 from project.evaluation.metrics import compute_metrics
 from project.utils.file_helper import ensure_dirs_exist
 from project.utils.constant import (
@@ -38,7 +38,9 @@ def evaluate_predicted_pipe(pred_pipe):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train Logistic Regression segmentation.")
+    parser = argparse.ArgumentParser(
+        description="Train Logistic Regression segmentation."
+    )
     parser.add_argument("--run", type=str, required=True, help="Run name")
     parser.add_argument("--max-iter", type=int, default=1000)
     parser.add_argument("--samples-per-class", type=int, default=500)
@@ -55,7 +57,7 @@ def main():
     args = parse_args()
     ensure_dirs_exist(args.run)
 
-    pipe_train, pipe_val, _ = load_data(TRAIN_PATH, VAL_PATH, None)
+    pipe_train, pipe_val, _ = ImagePipeline.load_data(TRAIN_PATH, VAL_PATH, None)
     assert pipe_train is not None
     assert pipe_val is not None
 

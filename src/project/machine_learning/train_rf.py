@@ -9,7 +9,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-from project.data.imageio import load_data
+from project.processing.pipeline import ImagePipeline
 from project.models.random_forest import RFConfig, train_random_forest, predict_pipeline
 from project.evaluation.metrics import compute_metrics
 from project.utils.file_helper import ensure_dirs_exist
@@ -56,7 +56,7 @@ def main():
     set_seed(SEED)
     ensure_dirs_exist(args.run)
 
-    pipe_train, pipe_val, _ = load_data(TRAIN_PATH, VAL_PATH, None)
+    pipe_train, pipe_val, _ = ImagePipeline.load_data(TRAIN_PATH, VAL_PATH, None)
     assert pipe_train is not None
     assert pipe_val is not None
 
@@ -70,10 +70,10 @@ def main():
 
     t0 = time.perf_counter()
     model = train_random_forest(
-    pipe_train,
-    cfg,
-    feature_mode=args.feature_mode,
-)
+        pipe_train,
+        cfg,
+        feature_mode=args.feature_mode,
+    )
     train_time = time.perf_counter() - t0
 
     ckpt_dir = get_checkpoint_path(args.run)
@@ -83,11 +83,11 @@ def main():
     # quick validation result after training
     t1 = time.perf_counter()
     pred_val = predict_pipeline(
-    model,
-    pipe_val,
-    title=f"{args.run} Validation RF",
-    feature_mode=args.feature_mode,
-)
+        model,
+        pipe_val,
+        title=f"{args.run} Validation RF",
+        feature_mode=args.feature_mode,
+    )
     infer_time = time.perf_counter() - t1
 
     report = evaluate_predicted_pipe(pred_val)

@@ -9,10 +9,10 @@ from typing import Literal
 import joblib
 import numpy as np
 
-from project.data.imageio import load_data
 from project.models.logistic_regression import predict_pipeline
 from project.evaluation.metrics import compute_metrics
 from project.utils.file_helper import ensure_dirs_exist
+from project.processing.pipeline import ImagePipeline
 from project.utils.constant import (
     TRAIN_PATH,
     VAL_PATH,
@@ -34,12 +34,12 @@ def save_performance_json(perf_path: Path, mode: str, report: dict) -> None:
 
 def get_pipe(mode: Mode):
     if mode == "train":
-        pipe, _, _ = load_data(TRAIN_PATH, None, None)
+        pipe, _, _ = ImagePipeline.load_data(TRAIN_PATH, None, None)
         return pipe
     if mode == "validation":
-        _, pipe, _ = load_data(None, VAL_PATH, None)
+        _, pipe, _ = ImagePipeline.load_data(None, VAL_PATH, None)
         return pipe
-    _, _, pipe = load_data(None, None, TEST_PATH)
+    _, _, pipe = ImagePipeline.load_data(None, None, TEST_PATH)
     return pipe
 
 
@@ -51,7 +51,9 @@ def evaluate_predicted_pipe(pred_pipe):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate Logistic Regression segmentation.")
+    parser = argparse.ArgumentParser(
+        description="Evaluate Logistic Regression segmentation."
+    )
     parser.add_argument("--run", type=str, required=True, help="Run name")
     parser.add_argument(
         "--mode",

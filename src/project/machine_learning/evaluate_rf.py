@@ -9,7 +9,7 @@ from typing import Literal
 import joblib
 import numpy as np
 
-from project.data.imageio import load_data
+from project.processing.pipeline import ImagePipeline
 from project.models.random_forest import predict_pipeline
 from project.evaluation.metrics import compute_metrics
 from project.utils.file_helper import ensure_dirs_exist
@@ -35,12 +35,12 @@ def save_performance_json(perf_path: Path, mode: str, report: dict) -> None:
 
 def get_pipe(mode: Mode):
     if mode == "train":
-        pipe, _, _ = load_data(TRAIN_PATH, None, None)
+        pipe, _, _ = ImagePipeline.load_data(TRAIN_PATH, None, None)
         return pipe
     if mode == "validation":
-        _, pipe, _ = load_data(None, VAL_PATH, None)
+        _, pipe, _ = ImagePipeline.load_data(None, VAL_PATH, None)
         return pipe
-    _, _, pipe = load_data(None, None, TEST_PATH)
+    _, _, pipe = ImagePipeline.load_data(None, None, TEST_PATH)
     return pipe
 
 
@@ -83,11 +83,11 @@ def main():
 
     t0 = time.perf_counter()
     pred_pipe = predict_pipeline(
-    model,
-    pipe,
-    title=f"{args.run} {args.mode} RF",
-    feature_mode=args.feature_mode,
-)
+        model,
+        pipe,
+        title=f"{args.run} {args.mode} RF",
+        feature_mode=args.feature_mode,
+    )
     infer_time = time.perf_counter() - t0
 
     report = evaluate_predicted_pipe(pred_pipe)
@@ -100,7 +100,6 @@ def main():
     failure_path = get_failure_path(args.run, args.mode, None, None)
 
     save_performance_json(perf_path, args.mode, report)
-
 
     pred_pipe.save(output_path)
     pred_pipe.select_failures(10).save(failure_path, True)

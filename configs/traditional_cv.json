@@ -1,0 +1,57 @@
+{
+    "kmeans_method": {
+        "method": "kmeans_method",
+        "kwargs": {
+            "k": 2
+        }
+    },
+    "edge_method": {
+        "method": "edge_method",
+        "kwargs": {
+            "blur_ksize": [5, 5],
+            "blur_stddev": 1.4,
+            "edge_th1": 60,
+            "edge_th2": 150,
+            "closing_ksize": [3, 3],
+            "closing_iter": 5,
+            "remove_object_size": 100
+        }
+    },
+    "watershed_method": {
+        "method": "watershed_method",
+        "kwargs": {
+            "exg_low": -20,
+            "exg_high": 20
+        }
+    },
+    "grabcut_method": {
+        "method": "grabcut_method",
+        "kwargs": { }
+    },
+    "excessive_green_method": {
+        "method": "excessive_green_method",
+        "kwargs": {
+            "threshold": 20,
+            "remove_object_size": 100
+        }
+
+    },
+    "hsv_segmentation_method": {
+        "method": "hsv_segmentation_method",
+        "kwargs": { }
+    },
+    "crf_method": {
+        "method": "crf_method",
+        "kwargs": {
+            "exg_threshold": 10,
+            "gt_prob": 0.7,
+            "iters": 5,
+            "sxy_gaussian": 3,
+            "compat_gaussian": 3,
+            "sxy_bilateral": 60,
+            "srgb_bilateral": 13,
+            "compat_bilateral": 10,
+            "remove_object_size": 100
+        }
+    }
+}

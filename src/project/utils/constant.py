@@ -23,7 +23,7 @@ def find_root() -> Path:
 
 
 EVALUATION_MODE = ["train", "test", "validation"]
-COMPARE_MODE = ["cross_model", "robustness_level"]
+COMPARE_MODE = ["cross", "robustness"]
 
 ROOT_PATH = find_root()
 RUNS_PATH = ROOT_PATH / "runs"
@@ -51,6 +51,22 @@ BLUR_LEVELS = [(3, 3), (5, 5), (7, 7), (11, 11), (15, 15)]
 BRIGHTNESS_LEVELS = [-60, -30, -10, 10, 30, 60]
 ROTATION_LEVELS = [15, 30, 45, 90, 135, 180]
 JPEG_COMPRESSION_LEVEL = [80, 60, 40, 20, 10]
+
+TRADITIONAL_CV_VALID_PARAM = {"method", "kwargs"}
+
+METHODOLOGIES = {"dl", "cv", "ml"}
+
+NN_VALID_PARAM = {
+    "learning_rate",
+    "epoch",
+    "patience",
+    "min_delta",
+    "criteria",
+    "features",
+    "title",
+    "batch_size",
+    "model",
+}
 
 
 def get_run_path(run_name: str) -> Path:
