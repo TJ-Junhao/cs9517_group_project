@@ -1,0 +1,6 @@
+opencv-python
+numpy
+scikit-learn
+scikit-image
+matplotlib
+pydensecrf@git+https://github.com/lucasb-eyer/pydensecrf.git
