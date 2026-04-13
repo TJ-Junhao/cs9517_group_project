@@ -3,7 +3,7 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{graphicx}
-\graphicspath{{../}{../comparisons/}{../runs/}}
+\graphicspath{{../}{../comparisons/}{../runs/}{../model_archs/arch_graph/}}
 \usepackage{subcaption}
 \usepackage{url}
 \usepackage{array}
@@ -314,8 +314,10 @@ tests the baseline encoder-decoder paradigm; ResU-Net tests whether
 better optimization and feature reuse improve the task; ASPP-ResU-Net
 tests whether multi-scale context matters; and Attention-Gated
 ASPP-ResU-Net tests whether more selective feature fusion can refine the
-strongest model further. Table~\ref{tab:methods} summarises all
-implemented methods.
+strongest model further. Figure~\ref{fig:deep_arch} shows the overall
+AG-ASPP-ResU-Net backbone, Figure~\ref{fig:deep_modules} details the
+internals of its Residual, ASPP, and Attention-Gate blocks, and
+Table~\ref{tab:methods} summarises all implemented methods.
 
 \begin{table}[t]
 \centering
@@ -344,6 +346,36 @@ AG-ASPP-ResU-Net  & Deep & + Attention-gated skip fusion \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[!htbp]
+\centering
+\setlength{\abovecaptionskip}{4pt}
+\includegraphics[width=\columnwidth]{architecture.png}
+\caption{AG-ASPP-ResU-Net backbone. Residual encoder blocks
+(\texttt{R}) in the early stages, an ASPP block (\texttt{A}) at the
+last encoder stage and the bottleneck, and attention-gated decoder
+blocks (\texttt{AG}) that selectively fuse encoder skips. U-Net,
+ResU-Net, and ASPP-ResU-Net share the same U-shape but progressively
+drop the \texttt{AG}, \texttt{ASPP}, and residual components
+respectively.}
+\label{fig:deep_arch}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\setlength{\abovecaptionskip}{4pt}
+\includegraphics[width=\columnwidth]{modules.png}
+\caption{Internals of the three distinguishing blocks in
+AG-ASPP-ResU-Net. Top: residual encoder block (two-conv stack with
+GroupNorm and $1{\times}1$ identity projection). Middle: ASPP block
+(four parallel atrous convolutions at dilations $\{1,3,6,9\}$ fused by
+concatenation and a $1{\times}1$ projection, plus an identity
+residual). Bottom: attention-gated residual decoder (skip feature $x_2$
+gated by a sigmoid map $\alpha\in[0,1]$ computed from projected skip
+and upsampled decoder features, then concatenated with the upsampled
+decoder feature $x_1$ and passed through a residual conv block).}
+\label{fig:deep_modules}
+\end{figure}
 
 \subsection{Training Configuration and Implementation Choices}
 
@@ -466,7 +498,7 @@ Edge-based       & 0.5796 & 0.2614 & 0.4145 & 0.036 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\columnwidth]{comparisons/classic_cv_comparisons.png}
 \caption{Comparison of traditional segmentation methods on the test
@@ -519,7 +551,7 @@ but also learning spatial structure more effectively. ExG is therefore
 best understood as a strong zero-training baseline rather than a
 competitive alternative to the deep models.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\columnwidth]{comparisons/classifier_comparison.png}
 \\[2pt]
@@ -596,7 +628,7 @@ Original paper best~\cite{zenkl2022} & --- & --- & 0.7750 & 0.8630 & 0.8990 & 0.
 \end{tabular}
 \end{table*}
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\columnwidth]{comparisons/deep_learning_comparisons.png}
 \caption{Test-set metrics across the four deep architectures. The
@@ -624,7 +656,7 @@ suggests that the main difficulty is not general class confusion, but
 more specific ambiguity around plant boundaries and weak foreground
 structure (Fig.~\ref{fig:training_cm}).
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \begin{minipage}{0.48\columnwidth}
 \centering
@@ -717,7 +749,7 @@ ranking is therefore fully inverted: the model with the worst clean-set
 performance outperforms every model that surpassed it under ideal
 conditions (Fig.~\ref{fig:noise_reversal}).
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \begin{minipage}{0.48\columnwidth}
 \centering
@@ -765,7 +797,7 @@ low-contrast plant boundaries, dark illumination, or severe image
 degradation. These are not isolated mistakes, but recurring patterns
 that match the corruption experiments and confusion-matrix trends.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \begin{minipage}{0.48\columnwidth}
 \centering
