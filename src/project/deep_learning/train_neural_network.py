@@ -4,6 +4,7 @@ import logging
 import time
 from pathlib import Path
 
+import pandas as pd
 import torch
 from torch import nn
 from torch import optim
@@ -11,7 +12,7 @@ from torch import optim
 from project.training.train import train_neural_network
 from project.training.loss import BCEDiceLoss
 from project.processing.pipeline import ImagePipeline
-from project.visualization.plot import plot_train_process
+from project.visualization.plot import plot_line_plot
 from project.utils.logger import setup_logger
 from project.config.configuring import train_arg_parse, count_channels
 from project.utils.random_setup import set_seed
@@ -158,13 +159,24 @@ def main() -> None:
         parameters.resume,
     )
 
-    plot_train_process(
-        train_log,
-        val_log,
+    train_data = pd.DataFrame(
+        {
+            "Epoch": range(1, len(train_log) + 1),
+            "Training Loss": train_log,
+            "Validation Loss": val_log,
+        }
+    )
+    plot_line_plot(
+        train_data,
+        "Epoch",
+        "Loss",
         save=True,
         save_to=plot_path,
         run=parameters.run,
         show=False,
+        title="Training and Validation Loss Curves",
+        file_name="training_and_validation_loss_curves",
+        palette=["#e71c22", "#0d61e8"],
     )
 
     save_model(model, checkpoint_path / "model.pt")

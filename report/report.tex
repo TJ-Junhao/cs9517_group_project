@@ -218,29 +218,17 @@ classifier.
 
 \subsection{Classical Machine Learning Baselines}
 
-We begin with classical methods because they represent the simplest way
-to approach the problem. If plant and soil can already be separated
-reasonably well using handcrafted colour information, then the value of
-more complex models needs to be demonstrated rather than assumed. For
-this reason, the classical baselines are not included merely as weak
-references, but as an important first step in understanding where the
-real difficulty of the task lies.
+While the traditional methods above rely on fixed rules, the classical
+machine learning baselines add a learned pixel-wise decision on top of
+the same handcrafted colour cues. This lets us ask a sharper question:
+once ExG is already established as a strong zero-training baseline, how
+much further can a learned classifier push pure colour-feature
+separability before spatial structure has to enter the picture?
 
-The most direct classical baseline is Excess Green (ExG), computed as
-$2G - R - B$. ExG is widely used as a simple vegetation prior because it
-emphasizes green-dominant regions in RGB imagery~\cite{woebbecke1995}.
-We include it not only because it is easy to implement, but because it
-asks an important question at the start of the study: how much of the
-task can already be solved by an explicit color rule? In our
-experiments, ExG is used both as a standalone zero-training baseline
-and as an additional handcrafted feature in later ablations, which also
-lets us test whether such a prior remains useful once more expressive
-models are introduced.
-
-After ExG, we introduce Logistic Regression as the first learned
-pixel-wise baseline. Unlike ExG, which relies on a fixed color rule,
-Logistic Regression learns a linear decision boundary from handcrafted
-features~\cite{hosmer2013}. Each pixel is treated as a sample, and we
+The first learned pixel-wise baseline is Logistic Regression. Unlike
+ExG, which relies on a fixed colour rule, Logistic Regression learns a
+linear decision boundary from handcrafted features~\cite{hosmer2013}.
+Each pixel is treated as a sample, and we
 test three feature sets: RGB, RGB+HSV, and RGB+HSV+ExG. HSV is included
 because it separates chromatic content from brightness and may help when
 illumination is less stable~\cite{smith1978}. The model is trained with
@@ -366,14 +354,15 @@ the segmentation masks are converted into binary form with plant pixels
 treated as the positive class.
 
 The loss function combines \textbf{binary cross-entropy with logits}
-and \textbf{Dice loss} in equal proportion. This choice reflects the
+and \textbf{Dice loss}~\cite{milletari2016} in equal proportion. This choice reflects the
 fact that the task requires both stable pixel-wise learning and strong
 overlap quality between prediction and ground truth. Binary
 cross-entropy supports optimization at the pixel level, while Dice loss
 directly emphasizes region-level agreement, which is particularly useful
 in segmentation settings with foreground-background imbalance.
 
-Optimization is carried out using \textbf{AdamW} with an initial
+Optimization is carried out using \textbf{AdamW}~\cite{loshchilov2019}
+with an initial
 learning rate of $1 \times 10^{-4}$. Learning rate reduction on
 validation plateau and early stopping are both applied so that the
 comparison reflects the best achievable model state rather than
@@ -956,17 +945,17 @@ Unsupervised Approach to Crop Segmentation with Depth-Informed Pseudo
 Labeling,'' \emph{Plant Phenomics}, vol.~7, no.~1, p.~100005, 2025.
 
 \bibitem{zhang2026}
-Zhang \emph{et al.}, ``DepthCropSeg++: Scaling a Crop Segmentation
-Foundation Model With Depth-Labeled Data,''
-\emph{IEEE J.~Sel.\ Topics Signal Process.}, 2026,
-doi: 10.1109/JSTSP.2026.3654362.
+J.~Zhang, S.~Cao, B.~Xu, Y.~Li, W.~Jia, T.~Wu, H.~Lu, W.~Hu, and
+Z.~Han, ``DepthCropSeg++: Scaling a Crop Segmentation Foundation Model
+With Depth-Labeled Data,'' \emph{IEEE J.~Sel.\ Topics Signal Process.},
+vol.~20, pp.~129--141, 2026, doi: 10.1109/JSTSP.2026.3654362.
 
 \bibitem{long2015}
 J.~Long, E.~Shelhamer, and T.~Darrell, ``Fully Convolutional Networks for
 Semantic Segmentation,'' in \emph{Proc.\ IEEE CVPR}, 2015, pp.~3431--3440.
 
 \bibitem{woebbecke1995}
-G.~M.~Woebbecke, G.~E.~Meyer, K.~Von~Bargen, and D.~A.~Mortensen,
+D.~M.~Woebbecke, G.~E.~Meyer, K.~Von~Bargen, and D.~A.~Mortensen,
 ``Color Indices for Weed Identification Under Various Soil, Residue, and
 Lighting Conditions,'' \emph{Trans.\ ASAE}, vol.~38, no.~1, pp.~259--269,
 1995.
@@ -1004,6 +993,15 @@ Pancreas,'' \emph{arXiv:1804.03999}, 2018.
 \bibitem{wu2018}
 Y.~Wu and K.~He, ``Group Normalization,'' in \emph{Proc.\ ECCV}, 2018,
 pp.~3--19.
+
+\bibitem{loshchilov2019}
+I.~Loshchilov and F.~Hutter, ``Decoupled Weight Decay Regularization,''
+in \emph{Proc.\ Int.\ Conf.\ Learn.\ Represent.\ (ICLR)}, 2019.
+
+\bibitem{milletari2016}
+F.~Milletari, N.~Navab, and S.-A.~Ahmadi, ``V-Net: Fully Convolutional
+Neural Networks for Volumetric Medical Image Segmentation,'' in
+\emph{Proc.\ Int.\ Conf.\ 3D Vis.\ (3DV)}, 2016, pp.~565--571.
 
 \end{thebibliography}
 

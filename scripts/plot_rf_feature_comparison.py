@@ -1,37 +1,43 @@
-from pathlib import Path
-import json
+#!/usr/bin/env python3
 
-from project.visualization.plot import plot_rf_feature_comparison
+import pandas as pd
 
+from project.visualization.plot import plot_bar_chart
+from project.data.json import read_json
+from project.utils.constant import COMPARISON_PATH, get_performance_path
 
 RUNS = {
-    "RGB": Path("runs/RF_RGB/performance/performance_test.json"),
-    "RGB+HSV": Path("runs/RF_RGB_HSV/performance/performance_test.json"),
-    "RGB+HSV+ExG": Path("runs/RF_RGB_HSV_EXG/performance/performance_test.json"),
+    "RGB": get_performance_path("RF_RGB", None, None) / "performance_test.json",
+    "RGB+HSV": get_performance_path("RF_RGB_HSV", None, None) / "performance_test.json",
+    "RGB+HSV+ExG": get_performance_path("RF_RGB_HSV_EXG", None, None)
+    / "performance_test.json",
 }
 
 
-def load_json(path: Path) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
 def main():
-    metrics = {name: load_json(path) for name, path in RUNS.items()}
+    metrics = {name: read_json(path) for name, path in RUNS.items()}
 
     labels = list(metrics.keys())
-    plant_iou = [metrics[k]["plant"]["iou"] for k in labels]
-    plant_f1 = [metrics[k]["plant"]["f1-score"] for k in labels]
-    plant_recall = [metrics[k]["plant"]["recall"] for k in labels]
-    pixel_acc = [metrics[k]["accuracy"] for k in labels]
 
-    plot_rf_feature_comparison(
-        labels=labels,
-        plant_iou=plant_iou,
-        plant_f1=plant_f1,
-        plant_recall=plant_recall,
-        pixel_acc=pixel_acc,
-        save_path="comparisons/rf_feature_comparison.png",
+    df = pd.DataFrame(
+        {
+            "Feature Set": labels,
+            "Plant IoU": [metrics[k]["plant"]["iou"] for k in labels],
+            "Plant F1": [metrics[k]["plant"]["f1-score"] for k in labels],
+            "Plant Recall": [metrics[k]["plant"]["recall"] for k in labels],
+            "Pixel Accuracy": [metrics[k]["accuracy"] for k in labels],
+        }
+    )
+
+    plot_bar_chart(
+        df,
+        x="Feature Set",
+        y="Metrics",
+        save=True,
+        save_to=COMPARISON_PATH,
+        show=False,
+        title="Random Forest Feature Comparisons",
+        file_name="rf_feature_comparison.png",
     )
 
     print("[OK] Saved figure to comparisons/rf_feature_comparison.png")

@@ -1,51 +1,57 @@
-from pathlib import Path
-import json
+#!/usr/bin/env python3
 
-from project.visualization.plot import plot_classifier_comparison
+import pandas as pd
 
+from project.visualization.plot import plot_bar_chart
+from project.data.json import read_json
+from project.utils.constant import COMPARISON_PATH, get_performance_path
 
 RUNS = {
     "RF": {
-        "test": Path("runs/RF_RGB_HSV_EXG/performance/performance_test.json"),
-        "val": Path("runs/RF_RGB_HSV_EXG/performance/performance_validation.json"),
+        "test": get_performance_path("RF_RGB_HSV_EXG", None, None)
+        / "performance_test.json",
+        "val": get_performance_path("RF_RGB_HSV_EXG", None, None)
+        / "performance_validation.json",
     },
     "LR": {
-        "test": Path("runs/LR_RGB_HSV_EXG/performance/performance_test.json"),
-        "val": Path("runs/LR_RGB_HSV_EXG/performance/performance_validation.json"),
+        "test": get_performance_path("LR_RGB_HSV_EXG", None, None)
+        / "performance_test.json",
+        "val": get_performance_path("LR_RGB_HSV_EXG", None, None)
+        / "performance_validation.json",
     },
 }
 
 
-def load_json(path: Path) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
 def main():
-    metrics = {}
-    for model_name, paths in RUNS.items():
-        metrics[model_name] = {
-            "test": load_json(paths["test"]),
-            "val": load_json(paths["val"]),
-        }
+    metrics = {
+        model: {"test": read_json(paths["test"]), "val": read_json(paths["val"])}
+        for model, paths in RUNS.items()
+    }
 
     labels = list(metrics.keys())
 
-    plant_iou = [metrics[k]["test"]["plant"]["iou"] for k in labels]
-    plant_f1 = [metrics[k]["test"]["plant"]["f1-score"] for k in labels]
-    inference_time = [metrics[k]["test"]["inference_time_seconds"] for k in labels]
-    train_time = [metrics[k]["val"]["train_time_seconds"] for k in labels]
-
-    plot_classifier_comparison(
-        labels=labels,
-        plant_iou=plant_iou,
-        plant_f1=plant_f1,
-        train_time=train_time,
-        inference_time=inference_time,
-        save_path="comparisons/classifier_comparison.png",
+    df = pd.DataFrame(
+        {
+            "Classifier": labels,
+            "Plant IoU": [metrics[k]["test"]["plant"]["iou"] for k in labels],
+            "Plant F1": [metrics[k]["test"]["plant"]["f1-score"] for k in labels],
+            "Training Time (s)": [metrics[k]["val"]["train_time_seconds"] for k in labels],
+            "Inference Time (s)": [metrics[k]["test"]["inference_time_seconds"] for k in labels],
+        }
     )
 
-    print("[OK] Saved figure to comparisons/classifier_comparison.png")
+    plot_bar_chart(
+        df,
+        x="Classifier",
+        y="Metrics",
+        save=True,
+        save_to=COMPARISON_PATH,
+        show=False,
+        title="Classifier Comparisons",
+        file_name="classifier_comparison.png",
+    )
+
+    print(f"[OK] Saved figure to {COMPARISON_PATH / 'classifier_comparison.png'}")
 
 
 if __name__ == "__main__":
