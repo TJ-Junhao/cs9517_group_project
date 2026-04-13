@@ -504,19 +504,19 @@ that explicit feature engineering is useful, but only up to a point.
 feature configurations.}
 \label{tab:classical}
 \renewcommand{\arraystretch}{1.1}
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
-\textbf{Method} & \textbf{Feature set} & \textbf{Accuracy} &
+\textbf{Method} & \textbf{Feature set} & \textbf{Acc.} &
   \textbf{Plant IoU} & \textbf{Plant F1} & \textbf{Time (s)} \\
 \midrule
-Logistic Reg. & RGB         & 0.8689 & 0.7016 & 0.8247 & 0.0477 \\
-Logistic Reg. & RGB+HSV     & 0.8774 & 0.7130 & 0.8325 & 0.0982 \\
-Logistic Reg. & RGB+HSV+ExG & 0.8774 & 0.7130 & 0.8325 & 0.1039 \\
+Logistic Reg. & RGB         & 0.8689 & 0.7016 & 0.8247 & 0.048 \\
+Logistic Reg. & RGB+HSV     & 0.8774 & 0.7130 & 0.8325 & 0.098 \\
+Logistic Reg. & RGB+HSV+ExG & 0.8774 & 0.7130 & 0.8325 & 0.104 \\
 \midrule
-Random Forest & RGB         & 0.8575 & 0.6665 & 0.7999 & 1.1872 \\
-Random Forest & RGB+HSV     & 0.8597 & 0.6786 & 0.8085 & 1.1444 \\
-Random Forest & RGB+HSV+ExG & 0.8676 & 0.6902 & 0.8167 & 1.1355 \\
+Random Forest & RGB         & 0.8575 & 0.6665 & 0.7999 & 1.187 \\
+Random Forest & RGB+HSV     & 0.8597 & 0.6786 & 0.8085 & 1.144 \\
+Random Forest & RGB+HSV+ExG & 0.8676 & 0.6902 & 0.8167 & 1.136 \\
 \bottomrule
 \end{tabular}
 \end{table}
