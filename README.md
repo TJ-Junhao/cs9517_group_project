@@ -18,18 +18,6 @@ other with the comparison tool.
 
 **Maintainer:** Junhao Bai
 
-## Team
-
-| Member         | Responsibility                                                                                                                                                      |
-|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Junhao Bai     | Codebase maintenance, `ImagePipeline` and shared infrastructure, deep-learning models (U-Net / ResU-Net / ASPP-ResU-Net / AG-ASPP-ResU-Net) and robustness protocol |
-| Changyu Chen   | Classical machine-learning baselines (Logistic Regression, Random Forest) and feature-configuration study                                                           |
-| Jianing Liu    | Traditional CV methods (ExG, HSV, K-means, edge-based, Watershed, GrabCut, DenseCRF)                                                                                |
-| Alyanna Zhang  | Report writing                                                                                                                                                      |
-| Xiao Dong      | Presentation slides                                                                                                                                                 |
-
----
-
 ## Repo Layout
 
 ```text

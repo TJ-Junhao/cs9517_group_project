@@ -1,52 +1,47 @@
-\documentclass[journal,10pt,twocolumn]{IEEEtran}
+\documentclass[conference]{IEEEtran}
 
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \graphicspath{{../}{../comparisons/}{../runs/}}
+\usepackage{subcaption}
 \usepackage{url}
 \usepackage{array}
 \usepackage{multirow}
 
 \begin{document}
 
-\title{Residuals Matter, Noise Still Wins: Insights into Plant-Soil Segmentation}
+\title{Residuals Help, but Noise Rewrites the Ranking: Plant-Soil Segmentation Beyond the Clean Split}
 
-\author{Junhao~Bai, Changyu~Chen, Xiao~Dong, Jianing~Liu, and Alyanna~Zhang%
-\thanks{All authors are with the School of Computer Science and
-Engineering, University of New South Wales, Sydney, Australia.
-(Emails: \{junhao.bai, changyu.chen1, xiao.dong, jianing.liu, alyanna.zhang\}@student.unsw.edu.au)}%
-\thanks{Authors are listed alphabetically by last name; ordering does
-not reflect relative contribution.}%
-\thanks{\textbf{Contributions.}
-J.~Bai maintained the shared codebase and the \texttt{ImagePipeline}
-abstraction, and implemented and evaluated the deep-learning models
-(U-Net, ResU-Net, ASPP-ResU-Net, AG-ASPP-ResU-Net) together with the
-robustness protocol.
-C.~Chen implemented the classical machine-learning baselines (Logistic
-Regression, Random Forest) and their feature-configuration study.
-J.~Liu worked on the traditional computer-vision methods (ExG, HSV,
-K-means, edge-based, Watershed, GrabCut, DenseCRF).
-A.~Zhang led the writing of this report.
-X.~Dong prepared the accompanying presentation slides.}}
+\author{
+\IEEEauthorblockN{
+Junhao Bai, Changyu Chen, Xiao Dong, Jianing Liu, Alyanna Zhang
+}
+\IEEEauthorblockA{
+\textit{School of Computer Science and Engineering} \\
+University of New South Wales \\
+Sydney, Australia \\
+\{junhao.bai, changyu.chen1, xiao.dong, jianing.liu, alyanna.zhang\}@student.unsw.edu.au
+}
+}
 
 \maketitle
 
 \begin{abstract}
-We compared traditional segmentation methods, classical machine learning
+We compared traditional segmentation methods, machine learning
 baselines, and deep learning models for plant-soil segmentation on the
 EWS dataset. The methods include ExG, HSV thresholding, K-means,
-edge-based segmentation, Watershed, GrabCut, DenseCRF, Logistic
-Regression, Random Forest, U-Net, ResU-Net, ASPP-ResU-Net, and
-Attention-Gated ASPP-ResU-Net. Among the traditional methods, simple
-colour-based approaches such as ExG (Plant IoU 0.754) and HSV
-thresholding (0.708) outperformed more complex alternatives such as
-GrabCut and Watershed, showing that explicit colour priors remain
-surprisingly competitive. All deep models surpassed the Plant IoU
-benchmark of 0.775 reported in the original paper, with the best model
-reaching 0.8327. The largest clean-set improvement appeared when moving
-from U-Net to ResU-Net, while ASPP and attention gates provided smaller
-additional gains. However, the robustness results revealed a more
+Watershed, GrabCut, DenseCRF, Logistic Regression, Random Forest, U-Net,
+ResU-Net, ASPP-ResU-Net, and Attention-Gated ASPP-ResU-Net. On the clean
+test set, the deep models achieved the strongest overall performance,
+with the best model reaching a Plant IoU of 0.8327, surpassing the
+original paper benchmark of 0.775. Within the deep-model comparison,
+the largest clean-set improvement appeared when moving from U-Net to
+ResU-Net, while ASPP and attention gates provided smaller additional
+gains. Even so, the traditional results showed that simple colour-based
+methods such as ExG (Plant IoU 0.754) and HSV thresholding (0.708)
+remained surprisingly competitive, outperforming several more complex
+classical alternatives. However, the robustness results revealed a more
 nuanced picture. Under strong Gaussian noise, all residual-based models
 collapsed near zero Plant IoU, while the plain U-Net retained a Plant
 IoU of 0.27 at the highest severity---a complete ranking reversal
@@ -58,7 +53,7 @@ vulnerable to severe Gaussian noise.
 
 \begin{IEEEkeywords}
 Plant-soil segmentation, semantic segmentation, traditional segmentation,
-deep learning, robustness, U-Net, residual learning, agricultural vision.
+deep learning, robustness, domain shift, U-Net, agricultural vision.
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -83,27 +78,45 @@ conditions become less ideal.
 Based on this setting, the main question of the project is
 straightforward: which kinds of methods are most effective for
 plant-soil segmentation in realistic field conditions? To answer this
-question, we compare both classical baselines and deep learning models
-within a unified experimental pipeline. We evaluate them using the same
+question, we compare representative traditional segmentation methods,
+machine learning baselines, and deep learning models within a unified
+experimental pipeline. The traditional methods include colour- and
+region-based approaches such as ExG, HSV thresholding, K-means,
+Watershed, GrabCut, and DenseCRF; the machine learning baselines are
+Logistic Regression and Random Forest with handcrafted features; and the
+deep learning models are U-Net and its residual, multi-scale, and
+attention-based variants. We evaluate all of them using the same
 preprocessing and metrics, and we consider both clean-set performance
-and robustness under corruption. In this way, the project is not only
-about identifying the best-performing model, but also about
-understanding where the improvement actually comes from.
+and robustness under corruption. The goal is therefore not just to
+identify the best-performing model, but also to understand what actually
+drives the improvement.
 
 \section{Literature Review}
 
 Earlier segmentation methods in agricultural vision often relied on
-handcrafted rules. A common example is the use of vegetation indices
-such as Excess Green (ExG), sometimes combined with thresholding or
-simple classifiers. These methods are still useful because they are easy
-to implement, interpretable, and computationally cheap. However, they
-usually depend heavily on stable colour contrast between vegetation and
-background. Once illumination changes or the soil becomes visually
-complex, their performance can drop quickly. For this reason, they are
-helpful as baselines, but they are usually not strong enough on their
-own for more difficult field conditions.
+handcrafted rules and traditional image-processing techniques. Common
+examples include vegetation indices such as Excess Green (ExG),
+threshold-based segmentation, clustering, and region-based methods.
+These approaches are still useful because they are easy to implement,
+interpretable, and computationally cheap. However, they usually depend
+heavily on stable colour contrast between vegetation and background.
+Once illumination changes or the soil becomes visually complex, their
+performance can drop quickly. For this reason, they are still useful as
+baselines, but usually not strong enough on their own under more
+difficult field conditions.
 
-With the development of deep learning, segmentation methods gradually
+With the development of learning-based approaches, segmentation methods
+gradually shifted toward models that can capture more complex visual
+patterns. Traditional machine learning methods such as Logistic
+Regression and Random Forest make it possible to move beyond fixed
+colour rules by learning decision boundaries from handcrafted features.
+In agricultural images, these features often include colour descriptors
+such as RGB, HSV, and vegetation indices. Their performance is still
+constrained by the quality of the input features, but they provide a
+useful middle ground between hand-designed rules and fully learned deep
+models.
+
+With the further development of deep learning, segmentation methods
 shifted toward representation-based models. Encoder-decoder
 architectures, especially U-Net and its variants, became widely used
 because they can learn pixel-level segmentation directly from data while
@@ -134,12 +147,12 @@ These studies suggest that high clean-set accuracy is important, but
 robustness under realistic variation is just as important.
 
 Following this line of work, our project adopts a progression from
-simple baselines to more expressive deep models. This design is useful
-because it allows us to compare not only which model performs best, but
-also why the performance changes. In other words, we are interested in
-whether the gain mainly comes from handcrafted colour knowledge,
-stronger nonlinear classification, or better learned spatial
-representations.
+traditional segmentation methods to machine learning baselines and then
+to more expressive deep models. This design helps us compare not only
+which model performs best, but also why the results change across
+methods. In other words, we are interested in whether the gain mainly
+comes from explicit colour priors, stronger nonlinear classification, or
+better learned spatial representations.
 
 \section{Methods}
 
@@ -205,15 +218,28 @@ classifier.
 
 \subsection{Classical Machine Learning Baselines}
 
-Building on the traditional baselines above, the classical machine
-learning methods introduce pixel-wise supervision on top of handcrafted
-features. This step asks whether learning a decision rule from labelled
-pixels, rather than thresholding a colour index directly, can extend the
-ceiling of what handcrafted features alone can deliver.
+We begin with classical methods because they represent the simplest way
+to approach the problem. If plant and soil can already be separated
+reasonably well using handcrafted colour information, then the value of
+more complex models needs to be demonstrated rather than assumed. For
+this reason, the classical baselines are not included merely as weak
+references, but as an important first step in understanding where the
+real difficulty of the task lies.
 
-Logistic Regression is the first learned pixel-wise baseline. Unlike
-ExG, which relies on a fixed colour rule, Logistic Regression learns a
-linear decision boundary from handcrafted
+The most direct classical baseline is Excess Green (ExG), computed as
+$2G - R - B$. ExG is widely used as a simple vegetation prior because it
+emphasizes green-dominant regions in RGB imagery~\cite{woebbecke1995}.
+We include it not only because it is easy to implement, but because it
+asks an important question at the start of the study: how much of the
+task can already be solved by an explicit color rule? In our
+experiments, ExG is used both as a standalone zero-training baseline
+and as an additional handcrafted feature in later ablations, which also
+lets us test whether such a prior remains useful once more expressive
+models are introduced.
+
+After ExG, we introduce Logistic Regression as the first learned
+pixel-wise baseline. Unlike ExG, which relies on a fixed color rule,
+Logistic Regression learns a linear decision boundary from handcrafted
 features~\cite{hosmer2013}. Each pixel is treated as a sample, and we
 test three feature sets: RGB, RGB+HSV, and RGB+HSV+ExG. HSV is included
 because it separates chromatic content from brightness and may help when
@@ -478,34 +504,22 @@ that explicit feature engineering is useful, but only up to a point.
 feature configurations.}
 \label{tab:classical}
 \renewcommand{\arraystretch}{1.1}
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
-\textbf{Method} & \textbf{Feature set} & \textbf{Acc.} &
+\textbf{Method} & \textbf{Feature set} & \textbf{Accuracy} &
   \textbf{Plant IoU} & \textbf{Plant F1} & \textbf{Time (s)} \\
 \midrule
-Logistic Reg. & RGB         & 0.8689 & 0.7016 & 0.8247 & 0.048 \\
-Logistic Reg. & RGB+HSV     & 0.8774 & 0.7130 & 0.8325 & 0.098 \\
-Logistic Reg. & RGB+HSV+ExG & 0.8774 & 0.7130 & 0.8325 & 0.104 \\
+Logistic Reg. & RGB         & 0.8689 & 0.7016 & 0.8247 & 0.0477 \\
+Logistic Reg. & RGB+HSV     & 0.8774 & 0.7130 & 0.8325 & 0.0982 \\
+Logistic Reg. & RGB+HSV+ExG & 0.8774 & 0.7130 & 0.8325 & 0.1039 \\
 \midrule
-Random Forest & RGB         & 0.8575 & 0.6665 & 0.7999 & 1.187 \\
-Random Forest & RGB+HSV     & 0.8597 & 0.6786 & 0.8085 & 1.144 \\
-Random Forest & RGB+HSV+ExG & 0.8676 & 0.6902 & 0.8167 & 1.136 \\
+Random Forest & RGB         & 0.8575 & 0.6665 & 0.7999 & 1.1872 \\
+Random Forest & RGB+HSV     & 0.8597 & 0.6786 & 0.8085 & 1.1444 \\
+Random Forest & RGB+HSV+ExG & 0.8676 & 0.6902 & 0.8167 & 1.1355 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{comparisons/classifier_comparison.png}
-\\[2pt]
-\includegraphics[width=\columnwidth]{comparisons/rf_feature_comparison.png}
-\caption{Classical ML baselines. Top: Logistic Regression vs.\ Random
-Forest on Plant IoU/F1 and time. Bottom: Random Forest feature
-ablation---RGB$\to$RGB+HSV gives the clearest gain, while adding ExG
-yields only a small further improvement.}
-\label{fig:classical_comparison}
-\end{figure}
 
 These results confirm that handcrafted features remain useful when the
 model itself is relatively simple. At the same time, they also show the
@@ -515,6 +529,18 @@ challenge in this task is not only learning better colour thresholds,
 but also learning spatial structure more effectively. ExG is therefore
 best understood as a strong zero-training baseline rather than a
 competitive alternative to the deep models.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{comparisons/classifier_comparison.png}
+\\[2pt]
+\includegraphics[width=\columnwidth]{comparisons/rf_feature_comparison.png}
+\caption{Classical ML baselines. Top: Logistic Regression vs.\
+Random Forest on Plant IoU/F1 and time. Bottom: Random Forest feature
+ablation---RGB$\to$RGB+HSV gives the clearest gain, while adding ExG
+yields only a small further improvement.}
+\label{fig:classical_comparison}
+\end{figure}
 
 \subsection{Deep Model Comparison on Clean Splits}
 
@@ -622,8 +648,7 @@ structure (Fig.~\ref{fig:training_cm}).
 \caption{AG-ASPP-ResU-Net. Left: training and validation loss curves
 showing stable convergence and a small late-epoch validation plateau.
 Right: test-set confusion matrix---residual errors are concentrated on
-plant pixels rather than soil, consistent with boundary-level
-ambiguity.}
+plant pixels rather than soil, consistent with boundary-level ambiguity.}
 \label{fig:training_cm}
 \end{figure}
 
@@ -715,10 +740,10 @@ conditions (Fig.~\ref{fig:noise_reversal}).
 \includegraphics[width=\linewidth]{AttentionASPPResUnet/plots/robustness/gaussian_noise/robustness_iou_test.png}
 \\ \small (b) AG-ASPP-ResU-Net
 \end{minipage}
-\caption{Ranking reversal under Gaussian noise. Plant/Soil IoU vs.\
-severity. The plain U-Net degrades gradually (Plant IoU 0.735$\to$0.271),
-while the residual-based AG-ASPP-ResU-Net collapses between levels 2
-and 3 and reaches 0.005 at level 5, despite leading on clean data.}
+\caption{Ranking reversal under Gaussian noise. Plant/Soil IoU
+vs.\ severity level. The plain U-Net degrades gradually (Plant IoU
+0.735$\to$0.271), while AG-ASPP-ResU-Net collapses between levels~2
+and~3, reaching 0.005 at level~5 despite leading on clean data.}
 \label{fig:noise_reversal}
 \end{figure}
 
@@ -737,7 +762,7 @@ Affine rotation  & Very strong & Almost no drop across levels \\
 Gaussian blur    & Strong      & Plant IoU 0.831$\to$0.791 at highest severity \\
 JPEG compression & Medium      & Plant IoU 0.810$\to$0.620; gradual boundary loss \\
 Brightness shift & Uneven      & Underexposure $\gg$ overexposure; non-monotonic \\
-Gaussian noise   & Weak        & All residual models $\le$0.005 at level 5;
+Gaussian noise   & Weak        & All residual models $\le$0.005 at level~5;
                                  U-Net retains 0.271 (ranking reversed) \\
 \bottomrule
 \end{tabular}
@@ -784,17 +809,14 @@ real-world deployment.
 
 \section{Discussion}
 
-The results reveal a consistent pattern: the most reliable clean-set
-gains in this task come from improving feature propagation and
-optimization stability, rather than from increasing architectural
-complexity alone. This is most clearly reflected in the transition from
-U-Net to ResU-Net, which produces the largest single improvement among
-the deep models. By contrast, ASPP and attention gating still help, but
-mainly as refinements. Their contribution is real, yet much smaller than
-the gain introduced by residual learning. In this sense, the progression
-from U-Net to the strongest model is not simply a story of adding more
-modules, but of identifying which change addresses the main bottleneck
-most effectively.
+A clear pattern still emerges from the results. On the clean test set,
+the strongest overall performance still comes from the deep
+encoder-decoder models, and the most important gain within that group
+appears in the transition from U-Net to ResU-Net. This indicates that,
+in our setting, better optimization and feature propagation matter more
+than simply adding extra modules. ASPP and attention gating still
+provide useful refinements, but their contributions are much smaller
+than the gain introduced by residual learning.
 
 The comparison with non-deep methods helps clarify that bottleneck.
 Among the traditional segmentation methods, the strongest results come
@@ -868,30 +890,54 @@ choices that decouple feature propagation from noise accumulation.
 
 \section{Conclusion}
 
-The results show that deep encoder-decoder models are clearly more
-effective than classical pixel-wise baselines for plant-soil
-segmentation, with all deep models surpassing the original paper
-benchmark of Plant IoU 0.775. The clearest clean-set improvement comes
-from residual learning, while later additions such as ASPP and attention
-gating mainly act as smaller refinements.
+Overall, the deep learning models remained the strongest, and all four
+architectures surpassed the original paper benchmark of Plant IoU 0.775.
+Within the deep-model comparison, the clearest clean-set improvement
+came from moving from U-Net to ResU-Net, while later additions such as
+ASPP and attention gating mainly provided smaller refinements.
 
-The negative results are equally informative. Neither ExG concatenation
-nor learnable residual scaling improved the final deep-model
-performance, which shows that not every plausible enhancement is useful
-once the backbone is already strong. In that sense, the study does more
-than rank models: it helps clarify which kinds of modifications
+The non-deep results were also informative. Among the traditional
+segmentation methods, simple colour-based approaches such as ExG and
+HSV thresholding performed better than more elaborate alternatives such
+as Watershed and GrabCut. The machine learning baselines made more
+flexible use of handcrafted features but still did not reach the level
+of the deep models. Taken together, these comparisons show that colour
+information remains highly useful in this task, but that stronger
+segmentation ultimately depends on learning spatial structure more
+effectively.
+
+The negative results further clarified this picture. Neither ExG
+concatenation nor learnable residual scaling improved final deep-model
+performance, showing that not every plausible enhancement is useful once
+the backbone is already strong. In this way, the study is not only about
+ranking methods, but also about identifying which kinds of modifications
 genuinely improve segmentation and which are largely redundant in this
 setting.
 
-The main finding that goes beyond clean-set ranking is the robustness
-reversal under Gaussian noise: residual-based models collapse to
-near-zero Plant IoU at level 5 while the plain U-Net retains 0.271,
-exposing a concrete accuracy-robustness trade-off with direct
-implications for deployment in real agricultural environments. The
-study is additionally limited to binary segmentation. Future work
-should target training strategies that improve noise robustness without
-sacrificing residual-based clean-set gains, and extend the pipeline
-beyond binary plant-soil separation toward richer field understanding.
+The most important finding beyond the clean-set ranking is the
+robustness reversal under severe Gaussian noise. All residual-based
+models collapse sharply at high noise levels, while the plain U-Net
+remains relatively more stable and retains a Plant IoU of 0.271 at the
+highest severity. This reveals a clear accuracy-robustness trade-off in
+the model designs used here, and has direct implications for real
+agricultural deployment where image quality cannot always be guaranteed.
+
+The main limitations of this study can already be seen in the result
+patterns. The current setup is still mainly about plant-soil separation,
+so the conclusions speak more directly to foreground-background
+discrimination than to broader field understanding. The validation-test
+gap also suggests that year-based domain shift is an important challenge
+by itself, rather than just a small variation within the same setting.
+Another issue is that all methods are evaluated at a fixed resized
+resolution, which may remove some of the fine boundary detail needed for
+thin leaves and weak foreground structures, where many of the remaining
+errors are concentrated. More importantly, the results suggest that the
+real bottleneck is no longer simply clean-set accuracy. The harder
+problem is learning representations that remain reliable when the visual
+cues become unstable. Future work should therefore focus less on adding
+complexity for its own sake, and more on improving robustness to
+temporal shift, boundary ambiguity, and other forms of visual
+instability that are likely to matter in real field conditions.
 
 \begin{thebibliography}{14}
 
