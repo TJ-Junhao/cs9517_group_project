@@ -38,11 +38,12 @@ def evaluate_predicted_pipe(pred_pipe):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train Random Forest segmentation.")
-    parser.add_argument("--run", type=str, required=True, help="Run name")
+    parser.add_argument("-R", "--run", type=str, required=True, help="Run name")
     parser.add_argument("--n-estimators", type=int, default=100)
     parser.add_argument("--max-depth", type=int, default=15)
     parser.add_argument("--samples-per-class", type=int, default=2000)
     parser.add_argument(
+        "-fm",
         "--feature-mode",
         type=str,
         default="rgb_hsv_exg",

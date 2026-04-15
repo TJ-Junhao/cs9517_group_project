@@ -41,10 +41,11 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Train Logistic Regression segmentation."
     )
-    parser.add_argument("--run", type=str, required=True, help="Run name")
+    parser.add_argument("-R", "--run", type=str, required=True, help="Run name")
     parser.add_argument("--max-iter", type=int, default=1000)
     parser.add_argument("--samples-per-class", type=int, default=500)
     parser.add_argument(
+        "-fm",
         "--feature-mode",
         type=str,
         default="rgb_hsv_exg",

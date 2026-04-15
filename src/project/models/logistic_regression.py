@@ -112,7 +112,6 @@ def train_logistic_regression(
     model = LogisticRegression(
         max_iter=config.max_iter,
         random_state=config.random_state,
-        n_jobs=-1,
     )
     model.fit(x_train, y_train)
     return model
@@ -136,8 +135,7 @@ def predict_pipeline(
     feature_mode: str = "rgb_hsv_exg",
 ) -> ImagePipeline:
     preds = [
-        predict_mask(model, image, feature_mode=feature_mode)
-        for image in pipe.images
+        predict_mask(model, image, feature_mode=feature_mode) for image in pipe.images
     ]
     return ImagePipeline(
         np.array(preds),

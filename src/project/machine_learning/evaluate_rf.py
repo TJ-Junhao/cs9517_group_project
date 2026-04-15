@@ -12,6 +12,7 @@ import numpy as np
 from project.processing.pipeline import ImagePipeline
 from project.models.random_forest import predict_pipeline
 from project.evaluation.metrics import compute_metrics
+from project.data.json import save_performance_json
 from project.utils.file_helper import ensure_dirs_exist
 from project.utils.constant import (
     SEED,
@@ -25,12 +26,6 @@ from project.utils.constant import (
 )
 
 Mode = Literal["train", "validation", "test"]
-
-
-def save_performance_json(perf_path: Path, mode: str, report: dict) -> None:
-    perf_path.mkdir(parents=True, exist_ok=True)
-    with open(perf_path / f"performance_{mode}.json", "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
 
 
 def get_pipe(mode: Mode):
@@ -53,14 +48,16 @@ def evaluate_predicted_pipe(pred_pipe):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate Random Forest segmentation.")
-    parser.add_argument("--run", type=str, required=True, help="Run name")
+    parser.add_argument("-R", "--run", type=str, required=True, help="Run name")
     parser.add_argument(
+        "-m",
         "--mode",
         type=str,
         default="test",
         choices=["train", "validation", "test"],
     )
     parser.add_argument(
+        "-fm",
         "--feature-mode",
         type=str,
         default="rgb_hsv_exg",

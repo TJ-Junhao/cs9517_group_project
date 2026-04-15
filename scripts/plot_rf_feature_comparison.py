@@ -40,7 +40,7 @@ def main():
         file_name="rf_feature_comparison.png",
     )
 
-    print("[OK] Saved figure to comparisons/rf_feature_comparison.png")
+    print(f"[OK] Saved figure to {COMPARISON_PATH / 'rf_feature_comparison.png'}")
 
 
 if __name__ == "__main__":
