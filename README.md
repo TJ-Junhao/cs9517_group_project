@@ -246,16 +246,8 @@ Renders side-by-side metric tables and robustness curves from the JSON
 reports across runs:
 
 ```bash
-./scripts/compare.sh <mode> <datatype> [run_name]
-# mode     ∈ { cross_model, robustness_level }
-# datatype ∈ { train, validation, test }
-```
-
-Equivalent direct invocation:
-
-```bash
-python -m project.visualization.compare -m cross_model -D test
-python -m project.visualization.compare -m robustness_level -D test -R UNet_Baseline
+./scripts/compare.py -m cross -D test --method cv -C traditional_cv.json
+./scripts/compare.py -m robustness -D test -R UNet_Baseline
 ```
 
 Outputs go to `comparisons/`.
