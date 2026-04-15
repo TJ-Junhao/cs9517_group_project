@@ -26,5 +26,5 @@
     "f1-score": 0.41690521239848494,
     "support": 2973696.0
   },
-  "inference_time_seconds": 0.05915083293803036
+  "inference_time_seconds": 0.06115488499995081
 }
