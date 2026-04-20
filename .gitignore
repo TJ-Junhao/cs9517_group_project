@@ -25,3 +25,6 @@ logs/
 
 # Spec
 COMP9517_26T1_Group_Project_Specification.pdf
+
+# Pack script
+pack.sh

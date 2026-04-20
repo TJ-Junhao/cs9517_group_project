@@ -31,7 +31,7 @@ cs9517_group_project/
 ├── scripts/                 # CLI entry points and thin shell wrappers
 │   ├── classic_cv.py        # classical CV methods
 │   ├── train.sh / eval.sh   # wrappers around project.deep_learning.*
-│   └── compare.sh           # wrapper around project.visualization.compare
+│   └── compare.py           # cross-method comparison tool
 ├── src/project/
 │   ├── config/              # argparse + config merging
 │   ├── data/                # image IO, JSON IO
@@ -199,7 +199,7 @@ Checkpoints go to `runs/<run_name>/checkpoints/model.pt`, training logs to
 ### Deep Learning — Evaluation
 
 ```bash
-python -m project.deep_learning.evaluate -R <run_name> -C <config.json> -m <mode>
+python -m project.deep_learning.evaluate_neural_network -R <run_name> -C <config.json> -m <mode>
 ```
 
 Convenience wrapper (runs test / train / validation in sequence):
@@ -315,6 +315,40 @@ the top level of the entry:
   random / torch / torch.cuda), and robustness evaluation reseeds before
   the sweep so stochastic corruptions (`gaussian_noise`, warps) are
   deterministic.
+
+---
+
+## Libraries and External Code
+
+### Python Dependencies
+
+All Python packages are installed via `uv pip install -e .` from `pyproject.toml`:
+
+| Library | Version | Purpose | Source |
+|---------|---------|---------|--------|
+| **NumPy** | latest | Array operations, feature extraction | [numpy.org](https://numpy.org/) |
+| **OpenCV** (`opencv-python`) | latest | Image I/O, classical CV operations (k-means, Canny, GrabCut, watershed, HSV conversion) | [opencv.org](https://opencv.org/) |
+| **PyTorch** (`torch`) | latest | Deep learning model definitions, training, and inference (U-Net family) | [pytorch.org](https://pytorch.org/) |
+| **scikit-learn** | latest | Logistic Regression, Random Forest, classification reports, confusion matrices | [scikit-learn.org](https://scikit-learn.org/) |
+| **scikit-image** | latest | Morphological operations, connected-component labelling | [scikit-image.org](https://scikit-image.org/) |
+| **Matplotlib** | latest | Plotting confusion matrices, robustness curves, comparison charts | [matplotlib.org](https://matplotlib.org/) |
+| **Seaborn** | latest | Confusion-matrix heatmaps | [seaborn.pydata.org](https://seaborn.pydata.org/) |
+| **safetensors** | ≥ 0.7.0 | Checkpoint serialisation (model weights) | [github.com/huggingface/safetensors](https://github.com/huggingface/safetensors) |
+| **tabulate** | ≥ 0.10.0 | CLI table formatting for metric reports | [github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate) |
+| **pydensecrf** | git master | DenseCRF post-processing (`crf_method` only; optional) | [github.com/lucasb-eyer/pydensecrf](https://github.com/lucasb-eyer/pydensecrf) |
+
+### Frontend Dependencies (model_archs/)
+
+The `model_archs/` directory contains a React + Vite app for visualising network architectures. Its dependencies (React, Vite, TypeScript, ESLint, Prettier) are declared in `model_archs/package.json` and can be installed with `npm install` or `bun install`.
+
+### Own Code
+
+All code under `src/project/`, `scripts/`, and `configs/` is original work by the group members. The deep-learning architectures (U-Net, ResU-Net, ASPP-ResU-Net, Attention-Gate ASPP-ResU-Net) are our own implementations referencing the following papers:
+
+- U-Net: Ronneberger et al., 2015
+- Residual U-Net: Zhang et al., 2018
+- ASPP: Chen et al. (DeepLab v2), 2017
+- Attention Gates: Oktay et al., 2018
 
 ---
 
